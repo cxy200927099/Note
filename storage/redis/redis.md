@@ -176,7 +176,7 @@ redis-benchmark  redis-check-aof  redis-check-rdb  redis-cli        redis-sentin
 ```
 
 ## go语言使用redis
-[go语言使用Redis]()
+[go语言使用Redis](https://github.com/cxy200927099/Note/blob/master/storage/redis/redis-go.md)
 
 
 
