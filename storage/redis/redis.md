@@ -9,10 +9,11 @@
 
 # Redis
 ## 概念
-Redis是一款开源软件(BSD licensed),是一种在内存中以key，value的数据存储方式做数据存储的，基于 **原子操作**；可以用作数据库，缓存和消息队列;Redis具有主-从数据复制，key过期超时，Lua脚本，LRU驱逐，事务和不同级别的磁盘持久性；Redis哨兵(Sentinel)使得服务可用性很高，支持redis集群自动分区
+Redis是一款开源软件(BSD licensed),是一种在内存中以key，value的数据存储方式做数据存储的，基于 **原子操作**；可以用作数据库，缓存和消息队列;Redis具有主-从数据复制，key过期超时，Lua脚本，LRU驱逐，事务和不同级别的磁盘持久性；Redis哨兵(Sentinel)使得服务可用性很高，支持redis集群自动分区
 
 ## 支持的数据结构
 Redis不是普通的key-value存储，它实际上是一个数据结构服务器，支持不同类型的值，支持的数据结构有strings,hashes,lists,sets,sorted sets,bitmaps,streams
+
 
 ### Key
 Redis的Key是二进制安全的，即可以使用任何二进制序列作为key，比如“foo”这样的字符串，或者JPEG文件的内容，甚至 空字符串 也可以；在设计key时最好遵循以下几点:
