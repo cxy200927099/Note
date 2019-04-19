@@ -90,12 +90,12 @@ list在redis中其实是双向列表，主要目的是为了保证快速的添�
 [更多参考这里](https://redis.io/commands#list)
 
 ### sets
-
+存储的值是无序的string集合
 
 [更多参考这里](https://redis.io/commands#set)
 
 ### sorted sets
-
+存储有序，唯一(不重复)的字符串元素集合
 
 [更多参考这里](https://redis.io/commands#sorted_set)
 
@@ -177,6 +177,90 @@ redis-benchmark  redis-check-aof  redis-check-rdb  redis-cli        redis-sentin
 
 ## go语言使用redis
 [go语言使用Redis](https://github.com/cxy200927099/Note/blob/master/storage/redis/redis-go.md)
+
+
+## Redis性能测试
+Redis官方已经提供了性能测试的工具**redis-benchmark**
+默认情况下执行 `redis-benchmark`命令会测试很多命令(set,get,incr,lpush,rpush,lpop,rpop,sadd,hset,spop,lrange,mset);
+
+只测试其中某个命令,使用 -t 参数:
+```bash
+root@wxtest047:~# redis-benchmark -t set,lpush -q
+SET: 116414.43 requests per second
+LPUSH: 130718.95 requests per second
+```
+更多参数可以使用`redis-benchmark -h` 查看
+
+[网络上别测试的效果-测试单实例redis读写list的性能](http://www.voidcn.com/article/p-cbtkplvs-bpq.html)
+
+
+### 使用 pipeline 
+默认情况下benchmark模拟了50个client(如果想指定client,使用-c参数),每个client接收到上一次发送的命令结果，才会发送下一个命令，这有点类似网络性能指标(RTT-Round-Trip time,即往返时延),使用pipeline可以一次发送多个命令，这在实际运用中是经常见到的，其能显著提高qps
+
+使用 -P [number of command]
+```bash
+root@wxtest047:~# redis-benchmark -t set,lpush -q
+SET: 112994.35 requests per second
+LPUSH: 93896.71 requests per second
+
+root@wxtest047:~#
+root@wxtest047:~# redis-benchmark -t set,lpush -q -P 16
+SET: 731211.69 requests per second
+LPUSH: 787401.56 requests per second
+
+root@wxtest047:~# redis-benchmark -t set,lpush -q -P 32
+SET: 813788.62 requests per second
+LPUSH: 720345.31 requests per second
+
+root@wxtest047:~# redis-benchmark -t set,lpush -q -P 64
+SET: 864551.75 requests per second
+LPUSH: 949132.06 requests per second
+
+root@wxtest047:~# redis-benchmark -t set,lpush -q -P 100
+SET: 885840.75 requests per second
+LPUSH: 987254.94 requests per second
+
+root@wxtest047:~# redis-benchmark -t set,lpush -q -P 200
+SET: 919266.06 requests per second
+LPUSH: 975471.69 requests per second
+```
+从上面可以看到使用-P参数之后，qps提高了好几倍
+
+
+
+### redis性能优化
+
+- 检查使用的API和数据结构，尽量避免在大对象上执行算法复杂度超过O(n)的命令，比如hgetall
+- 查看cpu是否饱和(使用率是否达到100%),由于redis的单线程处理机制，使得在处理命令时只能使用一个cpu，如果cpu使用率达到100%，redis将无法处理更多的命令，这严重影响吞吐量；如果qps只有几百或几千，cpu就接近饱和了，这就不正常的
+
+- CPU竞争
+尽量减少其他使用CPU较多的服务 和 redis服务部署到同一台机器
+
+- 内存交换
+内存交换是指操作系统吧内存换到硬盘，由于内存和硬盘的访问速度相差较多，这会极大的影响redis的性能；如何解决？ 确保运行redis的机器有充足的内存可用；
+- 网络问题
+
+- 使用多实例
+由于redis是基于单线程设计的，对于现在多核机器来说，并不能发挥机器的性能，可以起 多个实例平行扩展
+
+
+## Redis VS Memcache
+
+[antirez 1 - On Redis, Memcached, Speed, Benchmarks and The Toilet](http://oldblog.antirez.com/post/redis-memcached-benchmark.html)
+
+这个作者测试了get/set的对比，结果如下
+![SET/GET redis Vs Memcache](images/redis-vs-memcache-get-set.png)
+
+[dormando - Redis VS Memcached (slightly better bench)]()
+
+[antirez 2 - An update on the Memcached/Redis benchmark]()
+
+
+
+
+
+
+
 
 
 
