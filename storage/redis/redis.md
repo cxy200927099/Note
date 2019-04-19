@@ -1,9 +1,27 @@
 
 
 
-<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
-
-[TOC]
+<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} 
+-->
+* [概念](#概念)
+* [Value-Types](#Value-Types)
+  * [Key](#key)
+  * [strings](#strings)
+  * [hash](#hashes)
+  * [list](#lists)
+  * [set](#sets)
+  * [sorted set](#sorted_sets)
+  * [bitmap](#bitmaps)
+  * [stream](#streams)
+* [环境搭建](#环境搭建)
+  * [单机版本](#单机版本)
+* [代码使用Redis](#代码使用Redis)
+  * [go使用redis](#go使用redis)
+  * [java使用redis](#java使用redis)
+* [性能测试](#Redis性能测试) 
+  * [使用 pipeline](#pipeline)
+  * [redis性能优化](#redis性能优化)
+* [Redis VS Memcache](#Redis-VS-Memcache)  
 
 [更多markdown语法](https://shd101wyy.github.io/markdown-preview-enhanced/#/zh-cn/markdown-basics)
 
@@ -11,7 +29,7 @@
 ## 概念
 Redis是一款开源软件(BSD licensed),是一种在内存中以key，value的数据存储方式做数据存储的，基于 **原子操作**；可以用作数据库，缓存和消息队列;Redis具有主-从数据复制，key过期超时，Lua脚本，LRU驱逐，事务和不同级别的磁盘持久性；Redis哨兵(Sentinel)使得服务可用性很高，支持redis集群自动分区
 
-## 支持的数据结构
+## Value-Types
 Redis不是普通的key-value存储，它实际上是一个数据结构服务器，支持不同类型的值，支持的数据结构有strings,hashes,lists,sets,sorted sets,bitmaps,streams
 
 
@@ -94,7 +112,7 @@ list在redis中其实是双向列表，主要目的是为了保证快速的添�
 
 [更多参考这里](https://redis.io/commands#set)
 
-### sorted sets
+### sorted_sets
 存储有序，唯一(不重复)的字符串元素集合
 
 [更多参考这里](https://redis.io/commands#sorted_set)
@@ -175,9 +193,14 @@ OK
 redis-benchmark  redis-check-aof  redis-check-rdb  redis-cli        redis-sentinel   redis-server
 ```
 
-## go语言使用redis
+## 代码使用Redis
+redis支持很多语言，go，java，c/c++等待
+
+### go使用redis
 [go语言使用Redis](https://github.com/cxy200927099/Note/blob/master/storage/redis/redis-go.md)
 
+### java使用redis
+TODO
 
 ## Redis性能测试
 Redis官方已经提供了性能测试的工具**redis-benchmark**
@@ -194,7 +217,7 @@ LPUSH: 130718.95 requests per second
 [网络上别测试的效果-测试单实例redis读写list的性能](http://www.voidcn.com/article/p-cbtkplvs-bpq.html)
 
 
-### 使用 pipeline 
+### pipeline 
 默认情况下benchmark模拟了50个client(如果想指定client,使用-c参数),每个client接收到上一次发送的命令结果，才会发送下一个命令，这有点类似网络性能指标(RTT-Round-Trip time,即往返时延),使用pipeline可以一次发送多个命令，这在实际运用中是经常见到的，其能显著提高qps
 
 使用 -P [number of command]
@@ -230,6 +253,10 @@ LPUSH: 975471.69 requests per second
 
 ### redis性能优化
 
+- 网络带宽和时延
+  - ping查看client与server之间的网络延时
+  - 在redis-benchmark实际测试中，写4KB大小的string，qps为10万左右，实际上会消耗3.2 Gbit/s的带宽并且可能适合10Gbit/s链路，所以在排查性能时，网络带宽是否能达到这个Gbit/s也是需要考量的因素
+
 - 检查使用的API和数据结构，尽量避免在大对象上执行算法复杂度超过O(n)的命令，比如hgetall
 - 查看cpu是否饱和(使用率是否达到100%),由于redis的单线程处理机制，使得在处理命令时只能使用一个cpu，如果cpu使用率达到100%，redis将无法处理更多的命令，这严重影响吞吐量；如果qps只有几百或几千，cpu就接近饱和了，这就不正常的
 
@@ -238,22 +265,24 @@ LPUSH: 975471.69 requests per second
 
 - 内存交换
 内存交换是指操作系统吧内存换到硬盘，由于内存和硬盘的访问速度相差较多，这会极大的影响redis的性能；如何解决？ 确保运行redis的机器有充足的内存可用；
-- 网络问题
+
 
 - 使用多实例
 由于redis是基于单线程设计的，对于现在多核机器来说，并不能发挥机器的性能，可以起 多个实例平行扩展
 
+- 使用网络访问redis-server时 使用pipeline，且data size控制在1500字节时能有效的提高redis的qps
 
-## Redis VS Memcache
+
+## Redis-VS-Memcache
 
 [antirez 1 - On Redis, Memcached, Speed, Benchmarks and The Toilet](http://oldblog.antirez.com/post/redis-memcached-benchmark.html)
 
 这个作者测试了get/set的对比，结果如下
 ![SET/GET redis Vs Memcache](images/redis-vs-memcache-get-set.png)
 
-[dormando - Redis VS Memcached (slightly better bench)]()
+[dormando - Redis VS Memcached (slightly better bench)](https://dormando.livejournal.com/525147.html)
 
-[antirez 2 - An update on the Memcached/Redis benchmark]()
+[antirez 2 - An update on the Memcached/Redis benchmark](http://oldblog.antirez.com/post/update-on-memcached-redis-benchmark.html)
 
 
 
