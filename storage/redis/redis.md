@@ -21,7 +21,8 @@
 * [性能测试](#Redis性能测试) 
   * [使用 pipeline](#pipeline)
   * [redis性能优化](#redis性能优化)
-* [Redis VS Memcache](#Redis-VS-Memcache)  
+* [Redis VS Memcache](#Redis-VS-Memcache) 
+* [Redis进阶](#redis进阶) 
 
 [更多markdown语法](https://shd101wyy.github.io/markdown-preview-enhanced/#/zh-cn/markdown-basics)
 
@@ -285,12 +286,17 @@ LPUSH: 975471.69 requests per second
 [antirez 2 - An update on the Memcached/Redis benchmark](http://oldblog.antirez.com/post/update-on-memcached-redis-benchmark.html)
 
 
+## redis进阶
 
-
-
-
-
-
+- [pipelining](https://redis.io/topics/pipelining) 了解如何一次发送多个命令，节省往返时间
+- [Redis Pub/Sub](https://redis.io/topics/pubsub) Redis实现的快速稳定的发布/订阅消息系统
+- [Expires](https://redis.io/commands/expire) Redis允许为每个Key设置不同的生存时间，以便Key在到期时自动从服务器中删除
+- [Redis as an LRU cache:](https://redis.io/topics/lru-cache) 指导如何配置和使用Redis作为具有固定内存，且可以自动驱逐Key的缓存
+- [Redis transactions](https://redis.io/topics/transactions) 将命令组合在一起，以便将它们作为单个事务执行
+- [Mass insertion of data](https://redis.io/topics/mass-insert) 如何在短时间内向Redis实例添加大量预先存在或生成的数据
+- [Partitioning](https://redis.io/topics/partitioning) 如何在多个Redis实例之间分发数据
+- [Distributed locks](https://redis.io/topics/distlock) 使用Redis实现分布式锁
+- [Creating secondary indexes with Redis](https://redis.io/topics/indexes) 使用Redis数据结构创建二级索引，组合索引和遍历图
 
 
 
