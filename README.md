@@ -6,7 +6,7 @@
 ## 语言
 
 ### go语言
-TODO
+参考[go](go/go.md)
 
 ### c++
 TODO
@@ -19,7 +19,7 @@ TODO
 ## 存储
 
 ### redis
-
+参考[redis](storage/redis/redis.md)
 
 ## bigData
 
