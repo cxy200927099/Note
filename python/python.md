@@ -42,10 +42,42 @@ import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 ```
 
+## matplot绘图
 
+### 设置绘图比例大小
 
+```python
+import matplotlib.pyplot as plt
 
+plt.rcParams['figure.figsize'] = [15, 5] # for square canvas
+plt.rcParams['figure.subplot.left'] = 0
+plt.rcParams['figure.subplot.bottom'] = 0
+plt.rcParams['figure.subplot.right'] = 1
+plt.rcParams['figure.subplot.top'] = 1
 
+ax1 = plt.subplot(n_line, 1, 1)
+ax1.plot(pitch_1)
+ax1.set_title('estimated pitch [Hz]')
+ax2 = plt.subplot(n_line, 1, 2)
+ax2.plot(pitch_2)
+ax3 = plt.subplot(n_line, 1, 3)
+ax3.plot(pitch_3)
+plt.show()
+```
+
+## python后台运行无日志输出问题
+在服务器上运行python处理一些耗时的问题时，我们往往都是后台执行，Linux上有下面几种方式
+```
+nohup python xxx.py &
+nohup python xxx.py 2>&1 &
+nohup python xxx.py > xxx.log 2>&1 &
+```
+但是上面几种方式，无论nohup.out 或xxx.log都没有python日志输出，这是因为python执行有缓存输出
+
+### 解决,python后面加上参数 -u
+```
+nohup python -u xxx.py > xxx.log 2>&1 &
+```
 
 
 
