@@ -100,12 +100,38 @@ $ echo $str | cut -d \= -f 2
 /data2/audiofinger/audio/intune_with_timestamp/00024000/song_222874_64.mp4
 ```
 
+## 字符串截取
+
+```
+root@wxtest045:# str="song_1000107_64.mp4.mp3"; echo ${str%.mp3}
+song_1000107_64.mp4
+```
+
 ## 删除文本中匹配的某一行
 命令: `sed -i '/<要匹配的内容>/d' <file path>`
 删除file中匹配<要匹配的内容> 的行
 
 
+## 跨网传同步数据
+比如机器A上的 xxx.tar，要传到机器B上 /data1/test/目录 
+首先需要知道机器B的外网ip
+```
+[root@ina005 feature_file_update_20191129]# curl ip.cn -L
+{"ip": "13.126.3.86", "country": "印度", "city": "Amazon"}
+```
+进入机器B目录/data1/test/ 执行:
+```nc -l 30976 >xxx.tar```
+机器A上执行:
+nc 13.126.3.86  30976 <xxx.tar
 
+等待传输完成即可
+传输过程中，可以到机器B上查看xxx.tar文件大小是否在增长，一直增长，说明文件正在传输中
+传输完成可以用md5sum验证下文件传输的准确性
+
+
+## 查看本机外网ip
+curl ip.cn -L
+查看本机外网ip
 
 
 
