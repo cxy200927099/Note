@@ -44,6 +44,10 @@
 - 区分性别
 - 语音分割(将一句语音分割成几句短的声音)
 
+提取pitch的时候，一定要保证人声清唱中不混杂其他背景音
+否则提取出来的pitch不准确
+目前开源的提取人声的算法(spleeter，采用深度学习网络来处理，效果非常不错)
+
 估测F0
 1. 基于时域 
   算法: YIN
@@ -51,6 +55,12 @@
   倒谱分析,倒谱是估计功率谱的对数的傅里叶变换
 3. 二者的混合 
   YYAPT(Yet Another Algorithm of Pitch Tracking)
+4. PredominantPitchMelodia
+  算法库Eessentia中的提取主旋律pitch的算法
+  目前我们karaoke打分中使用了这种
+
+
+
 
 
 ## 傅里叶变换
@@ -139,5 +149,19 @@ http://www.speech.cs.cmu.edu/15-492/slides/03_mfcc.pdf
 
 ## 基因提取算法
 https://zh.wikipedia.org/wiki/%E5%9F%BA%E9%9F%B3%E6%AA%A2%E6%B8%AC%E7%AE%97%E6%B3%95
+
+
+## python端音频处理库
+[librosa](https://librosa.github.io/librosa/index.html)
+一个纯python实现的音频处理库
+
+
+## 人声提取，伴奏提取
+[spleeter](https://github.com/deezer/spleeter)
+优点：这个算法效果非常好，能将大部分歌曲的人声很好的提取出来
+缺点：对于有的音频，会卡死，只能杀掉进程
+
+
+
 
 
