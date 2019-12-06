@@ -88,7 +88,12 @@ HSL和HSB中s虽然都叫饱和度，但是实际是不一样的，同样L和B�
 * 缺点: 
   对计算要求较高，耗时较长，做不到camera这类的实时美颜
 
-### 美白算法[logarithmic Curve]
+### 美白算法
+
+颜色查找表
+https://www.jianshu.com/p/b470a5b5a560
+
+[logarithmic Curve]
 美白其实主要使皮肤变白变亮，因此，如果能有个合适的映射表，满足使得原图在色阶上有所增强，并且在亮度两端增强的稍弱，中间稍强，则也是个不错的选择
 ![logarithmic Curve算法数学公式](images/logarithmic_Curve.png)
 其中w(x,y) 表示输入图像数据，v(x,y)表示输出结果，beta为调节参数，了Beta分别为[2,3,4,5]时的曲线，如下图：
@@ -120,24 +125,27 @@ USM锐化是先对图像做高通滤波之后，得到高频信息，然后在�
   - 阈值:即高频信息值超过 阈值，才做锐化处理，做范围限定
 代码:
 ```c++
-Width = Bitmap.Width; Height = Bitmap.Height; Stride = Bitmap.Stride; BytePerPixel = Bitmap.BitCount / 8;
-    FastBitmap Clone = Bitmap.Clone();　　　　// 备份图像数据
-    BlurEffect.GaussianBlur(Clone, Radius);  // 对备份的数据进行高斯模糊处理
-    for (Y = 0; Y < Height; Y++)
+Width = Bitmap.Width; 
+Height = Bitmap.Height; 
+Stride = Bitmap.Stride; 
+BytePerPixel = Bitmap.BitCount / 8;
+FastBitmap Clone = Bitmap.Clone();　　　　// 备份图像数据
+BlurEffect.GaussianBlur(Clone, Radius);  // 对备份的数进行高斯模糊处理
+for (Y = 0; Y < Height; Y++)
+{
+    Pointer = Bitmap.Pointer + Y * Stride;
+    PointerC = Clone.Pointer + Y * Stride;
+    for (X = 0; X < Width; X++)
     {
-        Pointer = Bitmap.Pointer + Y * Stride;
-        PointerC = Clone.Pointer + Y * Stride;
-        for (X = 0; X < Width; X++)
+        Value = Pointer[X] - PointerC[X];
+        if (Utility.Abs (Value) > Threshold)
         {
-            Value = Pointer[X] - PointerC[X];
-            if (Utility.Abs (Value) > Threshold)
-            {
-                Value = Pointer[X] + Amount * Value / 100;
-                Pointer[X] = (byte)((((ushort)Value | ((short)(255 - Value) >> 15)) & ~Value >> 15));
-            }
+            Value = Pointer[X] + Amount * Value / 100;
+            Pointer[X] = (byte)((((ushort)Value | ((short)(255 - Value) >> 15)) & ~Value >> 15));
         }
     }
-    Clone.Dispose();
+}
+Clone.Dispose();
 ```
 
 
@@ -164,6 +172,7 @@ LUT映射
 
 
 
+高反差保留 = 原始图像 - 高斯模糊图像
 
 
 
