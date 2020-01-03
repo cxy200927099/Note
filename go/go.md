@@ -30,3 +30,19 @@ go module学习之路
 
 ## go性能调优
 
+
+## go相关问题
+
+### go get -u报错
+```
+ chenxingyi@cxy-mac-pro  ~  go get -u github.com/gocolly/colly/...
+package github.com/gocolly/colly
+	imports golang.org/x/net/html: golang.org/x/net is a custom import path for https://go.googlesource.com/net, but /Users/chenxingyi/work/go/src/golang.org/x/net is checked out from https://github.com/golang/net.git
+package github.com/gocolly/colly
+	imports golang.org/x/net/html/charset: golang.org/x/net is a custom import path for https://go.googlesource.com/net, but /Users/chenxingyi/work/go/src/golang.org/x/net is checked out from https://github.com/golang/net.git
+package github.com/gocolly/colly
+	imports golang.org/x/net/context: golang.org/x/net is a custom import path for https://go.googlesource.com/net, but /Users/chenxingyi/work/go/src/golang.org/x/net is checked out from https://github.com/golang/net.git
+```
+原因: golang.org/x/net下的路径更换了，变为了的下载路径已经变更为https://go.googlesource.com/net
+解决: 删除golang.org/x 下的net目录，再次执行相关命令```go get``即可
+
