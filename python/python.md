@@ -1,4 +1,19 @@
 
+
+## pip安装慢的问题
+在使用pip安装的某些包的时候，网络巨慢往往只有几KB/s,那是因为我们访问的是国外的服务器
+这里更换成国内的如 阿里云 pip 源即可解决慢的问题, [更多国内pip源](https://yq.aliyun.com/articles/652884)
+也可以单独安装某个包的时候，指定pip源，如下
+```
+pip install scrapy -i https://mirrors.aliyun.com/pypi/simple/
+```
+
+## python为指定版本安装库
+```
+python3.7 -m pip install numpy
+```
+为指定的python3.7版本安装numpy
+
 ## python3中文问题
 
 ### 读取中文path
