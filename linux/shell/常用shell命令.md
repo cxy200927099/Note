@@ -9,6 +9,9 @@
 
 ## Linux定时任务---- crontab
 
+* 默认crontab是加锁的，不让随便编辑，执行下这个解锁命令
+```chattr  -i /var/spool/cron/root```
+
 [参考这里](https://www.cnblogs.com/mingforyou/p/3930636.html)
 ```
 //为当前用户创建crontab
@@ -144,7 +147,8 @@ curl ip.cn -L
 查看本机外网ip
 
 
-
+## 服务部署常用shell脚本
+[服务部署常用shell脚本]()
 
 
 
