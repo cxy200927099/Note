@@ -148,7 +148,7 @@ curl ip.cn -L
 
 
 ## 服务部署常用shell脚本
-[服务部署常用shell脚本]()
+[服务部署常用shell脚本](https://github.com/cxy200927099/Note/blob/master/linux/shell/%E6%9C%8D%E5%8A%A1%E9%83%A8%E7%BD%B2%E5%B8%B8%E7%94%A8shell%E8%84%9A%E6%9C%AC.md)
 
 
 
