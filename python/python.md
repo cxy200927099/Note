@@ -212,5 +212,22 @@ Process finished with exit code 0
 ```
 
 
+## pycharm 激活
+1. 下载
+jetbrains-agent.jar
+将其添加到pycharm的安装路径下，我这里mac下pycharm的安装路径如下
+```/Applications/PyCharm with Anaconda plugin .app/Contents/bin```
 
+2. 修改pycharm启动vm选项
+打开pycharm，具体 Help->Edit Cuctom VM Options...
+在最后一行添加如下代码
+```
+-javaagent:/Applications/PyCharm with Anaconda plugin .app/Contents/bin/jetbrains-agent.jar
+```
+3. 修改license server
+Help->Register
+在licens server一栏填入如下地址
+```
+http://fls.jetbrains-agent.com
+```
 

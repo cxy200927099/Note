@@ -123,7 +123,6 @@ init logging
 2020-01-20 16:08:45,936 INFO logUtil.py:18:log init!
 2020-01-20 16:08:45,936 INFO dependency_b.py:14:init done!
 package dependency b was called
-
 ```
 
 ## 总结
