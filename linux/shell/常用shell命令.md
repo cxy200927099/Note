@@ -1,4 +1,8 @@
-## 查看 CPU占用-- top
+
+[TOC]
+
+
+## 查看cpu占用--top
 
 
 
@@ -7,7 +11,7 @@
 % wa 占比比较高的话，说明磁盘io读写比较频繁
 
 
-## Linux定时任务---- crontab
+## Linux定时任务----crontab
 
 * 默认crontab是加锁的，不让随便编辑，执行下这个解锁命令
 ```chattr  -i /var/spool/cron/root```
@@ -18,8 +22,7 @@
 crontab -e   
 ```
 在文件中输入如下，保存退出
-``` 
-#add by chenxingyi
+```shell
 */2 * * * * /home/root1/checkProxyMemory/hbaseproxy_mem_check.sh > /tmp/ai_hbaseproxy_monitor.log 2>&1
 ```
 每隔2分钟检查一次
