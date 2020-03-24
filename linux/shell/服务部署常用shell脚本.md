@@ -20,7 +20,7 @@ function SetEnv(){
 
 function Alarm()
 {
-     curl -s -H 'Content-Type: application/json' https://oapi.dingtalk.com/robot/send?access_token=dc671aee026853fdcb787e074cde54a04878afe968ead9ceb5ddb82bc8ebbf13 -d \
+     curl -s -H 'Content-Type: application/json' https://oapi.dingtalk.com/robot/send?access_token=dc671aee026853fdcb787e074cde54a04878afe968ead9ceb5ddb82bc8ebxxxx -d \
          "{\"msgtype\":\"text\",\"text\":{\"content\":\"alarm:${HOSTNAME}\\n$1\"}}"
 }
 
