@@ -32,6 +32,34 @@
 #### 方法区(常量池):
 方法区里面，存放方法信息，元数据，常量，以及静态变量，类信息
 
+- 元数据
+  java中元数据就是 注释和注解
+  - 元数据的作用
+    - 编写文档:根据元数据可以生成文档
+    - 代码分析:通过代码里标识的元数据对代码进行分析，如配置管理，框架，代码生成
+    - 编译检查: 编译检查，如overwrride，deprecation，SuppressWarnings
+
+### 永久区域(PermGen)vs元数据区(meta-space)
+jdk1.7及之前，jvm还包含永久区域
+jdk1.8开始，将永久区域移除，加入了元数据区，存储在native heap中
+
+
+
+### 本地堆(Native Heap)
+本地堆也是隶属于jvm中的一部分内存区域，其对内存的管理与java堆不同，需要自己申请和释放，理论上系统内存多大，native就有多大
+
+- 存储什么
+  - 管理java heap的状态数据（用于GC）;
+  - JNI调用，也就是Native Stack;
+  - JIT（即使编译器）编译时使用Native Memory，并且JIT的输入（Java字节码）和输出（可执行代码）也都是保存在Native Memory；
+  - NIO direct buffer。对于IBM JVM和Hotspot，都可以通过-XX:MaxDirectMemorySize来设置nio直接缓冲区的最大值。默认是64M。超过这个时，会按照32M自动增大。
+  - 对于IBM的JVM某些版本实现，类加载器和类信息都是保存在Native Memory中的
+
+
+优点: 不在出现OOM的Error
+缺点: 使用不当容易出现堆外内存泄漏，比如gzip忘记close，DirectBuffer的引用是直接分配在堆得Old区的，因此其回收时机是在FullGC时。频繁的分配DirectBuffer很容易导致Native Memory溢出
+
+
 ## GC
 垃圾回收器，java语言的特性，平常在编写代码的时候，不需要考虑对象的内存释放，不像c++那样需要程序员去管理内存的释放，
 java语言会在特定的时刻(内存不足的时候)进行内存回收，清理掉无用的对象;
