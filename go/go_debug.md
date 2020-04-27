@@ -22,25 +22,25 @@ go get -u github.com/go-delve/delve/cmd/dlv
 Type 'help' for list of commands.
 //设置断点
 (dlv) b main.main
-Breakpoint 1 set at 0x85d36f for main.main() /Users/chenxingyi/work/go/src/wx-gitlab.xunlei.cn/ai/shortvideo_finger/src/main/fp_writer_1.go:5
+Breakpoint 1 set at 0x85d36f for main.main() /Users/chenxingyi/work/go/src/xxx.xxx/ai/shortvideo_finger/src/main/fp_writer_1.go:5
 //设置断点
 (dlv) b query_fingerprints.go:281
-Breakpoint 2 set at 0x844d50 for wx-gitlab.xunlei.cn/ai/shortvideo_finger/src/fp_algorithms.SelectQueryFeatures() /Users/chenxingyi/work/go/src/wx-gitlab.xunlei.cn/ai/shortvideo_finger/src/fp_algorithms/query_fingerprints.go:281
+Breakpoint 2 set at 0x844d50 for xxx.xxx/ai/shortvideo_finger/src/fp_algorithms.SelectQueryFeatures() /Users/chenxingyi/work/go/src/xxx.xxx/ai/shortvideo_finger/src/fp_algorithms/query_fingerprints.go:281
 //显示所有断点
 (dlv) bp
 Breakpoint unrecovered-panic at 0x42a8c0 for runtime.startpanic() /Users/chenxingyi/work/go/go1.10.8/src/runtime/panic.go:588 (0)
 	print runtime.curg._panic.arg
-Breakpoint 1 at 0x85d36f for main.main() /Users/chenxingyi/work/go/src/wx-gitlab.xunlei.cn/ai/shortvideo_finger/src/main/fp_writer_1.go:5 (0)
-Breakpoint 2 at 0x844d50 for wx-gitlab.xunlei.cn/ai/shortvideo_finger/src/fp_algorithms.SelectQueryFeatures() /Users/chenxingyi/work/go/src/wx-gitlab.xunlei.cn/ai/shortvideo_finger/src/fp_algorithms/query_fingerprints.go:281 (0)
+Breakpoint 1 at 0x85d36f for main.main() /Users/chenxingyi/work/go/src/xxx.xxx/ai/shortvideo_finger/src/main/fp_writer_1.go:5 (0)
+Breakpoint 2 at 0x844d50 for xxx.xxx/ai/shortvideo_finger/src/fp_algorithms.SelectQueryFeatures() /Users/chenxingyi/work/go/src/xxx.xxx/ai/shortvideo_finger/src/fp_algorithms/query_fingerprints.go:281 (0)
 //继续运行
 (dlv) c
-> main.main() /Users/chenxingyi/work/go/src/wx-gitlab.xunlei.cn/ai/shortvideo_finger/src/main/fp_writer_1.go:5 (hits goroutine(1):1 total:1) (PC: 0x85d36f)
+> main.main() /Users/chenxingyi/work/go/src/xxx.xxx/ai/shortvideo_finger/src/main/fp_writer_1.go:5 (hits goroutine(1):1 total:1) (PC: 0x85d36f)
 //打印某个变量 startIndex的值，*这里出现某些变量不能答应的现象*
 (dlv) p startIndex
 Command failed: could not find symbol value for startIndex
 //单步运行
 (dlv) n
-> main.main() /Users/chenxingyi/work/go/src/wx-gitlab.xunlei.cn/ai/shortvideo_finger/src/main/fp_writer_1.go:7 (PC: 0x85d37b)
+> main.main() /Users/chenxingyi/work/go/src/xxx.xxx/ai/shortvideo_finger/src/main/fp_writer_1.go:7 (PC: 0x85d37b)
 //打印变量 len(disArray)
 dlv) p len(disArray)
 Command failed: could not find symbol value for disArray
@@ -52,9 +52,9 @@ Command failed: could not find symbol value for disArray
 600
 //设置断点
 (dlv) b query_fingerprints.go:288
-Command failed: could not find /Users/chenxingyi/work/go/src/wx-gitlab.xunlei.cn/ai/shortvideo_finger/src/fp_algorithms/query_fingerprints.go:288
+Command failed: could not find /Users/chenxingyi/work/go/src/xxx.xxx/ai/shortvideo_finger/src/fp_algorithms/query_fingerprints.go:288
 (dlv) b query_fingerprints.go:289
-Breakpoint 3 set at 0x844c24 for wx-gitlab.xunlei.cn/ai/shortvideo_finger/src/fp_algorithms.SelectQueryFeatures() /Users/chenxingyi/work/go/src/wx-gitlab.xunlei.cn/ai/shortvideo_finger/src/fp_algorithms/query_fingerprints.go:289
+Breakpoint 3 set at 0x844c24 for xxx.xxx/ai/shortvideo_finger/src/fp_algorithms.SelectQueryFeatures() /Users/chenxingyi/work/go/src/xxx.xxx/ai/shortvideo_finger/src/fp_algorithms/query_fingerprints.go:289
 (dlv)
 ```
 
