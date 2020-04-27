@@ -231,10 +231,46 @@ curl ip.cn -L
 
 
 
+## 时间
+1，获取当前标准时间
+currentTime=`date “+%Y-%m-%d %H:%M:%S”`
+
+2，获取当前时间戳
+currentStamp=`date +%s`
+
+3，将标准时间转换成时间戳
+standard="2016-08-03 14:13:23"               //注意格式一定要正确
+stamp=`date -d "$standardTime" +%s`
+
+4，将时间戳转换成标准时间
+stamp=1287331200
+standard=`date -d @"$stamp" +"%Y-%m-%d %H:%M:%S"`
+
+
+
+"{\"msgtype\":\"text\",\"text\":{\"content\":{\"fp_writer_statics\":\"test-cxy\"}}}"
+
+
+
+curl -s -H 'Content-Type: application/json' https://oapi.dingtalk.com/robot/send?access_token=741d8e6e12cd957839847e22add08d3017b5501aded7b0946a9ee36c5bc52adf -d \
+         "{\"msgtype\":\"text\",\"text\":{\"content\":\"cxy:test-cxy\"}}"
 
 
 
 
+select guid, t1.cnt_guid,t2.is_pay
+from
+    (select guid,cnt_guid
+     from xx0
+     ) as t1
+left outer join
+    (select guid,is_pay
+     from xx1
+     ) t2 on t1.guid=t2.guid
 
 
-
+select guid,cnt_guid
+     from xx0
+union
+select guid,is_pay
+     from xx1
