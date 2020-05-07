@@ -142,6 +142,51 @@ mysql> exit
 $ mysql -uroot -psd-9898w
 
 
+### 添加用户让用户远程访问
+正常情况下，如果不做任何配置，mysql是只允许root用户在localhost登录，如果需要在其他机器上访问本机的mysql，需要添加用户设置相应的权限
+#### 查看用户权限
+最新的mysql中对用户的密码进行了md5加密，`Password`字段变为了 `authentication_string`
+```
+mysql> use mysql;
+mysql> select User,Host,authentication_string from user;
++------------------+-----------------+-------------------------------------------+
+| User             | Host            | authentication_string                     |
++------------------+-----------------+-------------------------------------------+
+| root             | localhost       | *A80DE153CE4385697C1A6F0191FEB8DD7738E711 |
+| mysql.session    | localhost       | *THISISNOTAVALIDPASSWORDTHATCANBEUSEDHERE |
+| mysql.sys        | localhost       | *THISISNOTAVALIDPASSWORDTHATCANBEUSEDHERE |
+| debian-sys-maint | localhost       | *35043784ADD921E59EDF934B6A48A056BB530878 |
++------------------+-----------------+-------------------------------------------+
+```
+#### 添加用户
+```
+mysql> GRANT ALL PRIVILEGES ON *.* TO 'fpWriter'@'%'IDENTIFIED BY 'fpWriter' WITH GRANT OPTION;
+Query OK, 0 rows affected, 1 warning (0.00 sec)
+
+mysql> FLUSH PRIVILEGES;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> select User,Host,authentication_string from user;
++------------------+-----------------+-------------------------------------------+
+| User             | Host            | authentication_string                     |
++------------------+-----------------+-------------------------------------------+
+| root             | localhost       | *A80DE153CE4385697C1A6F0191FEB8DD7738E711 |
+| mysql.session    | localhost       | *THISISNOTAVALIDPASSWORDTHATCANBEUSEDHERE |
+| mysql.sys        | localhost       | *THISISNOTAVALIDPASSWORDTHATCANBEUSEDHERE |
+| debian-sys-maint | localhost       | *35043784ADD921E59EDF934B6A48A056BB530878 |
+| fpWriter         | %               | *35DA96C803415770CA92387E979909F587BAE16D |
++------------------+-----------------+-------------------------------------------+
+```
+- 固定ip才能访问
+```
+mysql> grant all privileges on *.* to 'test'@'10.10.200.77'identified by 'test' with grant option;
+Query OK, 0 rows affected, 1 warning (0.00 sec)
+
+mysql> flush privileges;
+Query OK, 0 rows affected (0.00 sec)
+```
+这样只有在10.10.200.77这台机器上才能访问也 用户test 去访问远端的mysql，其他机器都访问不了
+
 ## example
 
 ### 查看数据库大小
