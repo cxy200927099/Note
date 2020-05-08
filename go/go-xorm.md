@@ -42,11 +42,11 @@ $ cd ~/work/go/src/fpWriter
 # 将 ~/work/go/src/github.com/go-xorm/cmd/xorm/templates 目录拷贝到当前文件夹
 $ cp ~/work/go/src/github.com/go-xorm/cmd/xorm/templates ./ -r
 # 生成代码将会把远端数据库XL_VideoDB中的所有表生成对应的model代码
-$ xorm reverse mysql "fpWriter:fpWriter@tcp(10.10.200.76:3306)/XL_VideoDB?charset=utf8" templates/goxorm
+$ xorm reverse mysql "test:test@tcp(ip:port)/XL_VideoDB?charset=utf8" templates/goxorm
 
 ```
 执行完之后，上述会在当前目录创建models文件夹，并在models文件夹下生成每个表对应的model
 
-**注意: 上面 fpWriter:fpWriter@tcp(10.10.200.76:3306)/XL_VideoDB?charset=utf8 这个需要用""来包含，否则会出现错误`no matches found: root:sd-9898w@tcp(10.10.200.76:3306)/XL_VideoDB?charset=utf8`**
+**注意: 上面 test:test@tcp(ip:port)/XL_VideoDB?charset=utf8 这个需要用""来包含，否则会出现错误`no matches found: test:test@tcp(ip:port)/XL_VideoDB?charset=utf8`**
 
 
