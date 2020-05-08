@@ -133,13 +133,13 @@ mysql.server同样是一个启动脚本，调用mysqld_safe脚本。它的执行
 ### 修改用户密码
 ```
 $ mysql -uroot -pold-password
-mysql> set password for 'root'@'localhost'=password('sd-9898w');
+mysql> set password for 'root'@'localhost'=password('newPassword');
 Query OK, 0 rows affected, 1 warning (0.00 sec)
 
 mysql> exit
 ```
 新密码重新登录
-$ mysql -uroot -psd-9898w
+$ mysql -uroot -p<password>
 
 
 ### 添加用户让用户远程访问
@@ -160,7 +160,7 @@ mysql> select User,Host,authentication_string from user;
 ```
 #### 添加用户
 ```
-mysql> GRANT ALL PRIVILEGES ON *.* TO 'fpWriter'@'%'IDENTIFIED BY 'fpWriter' WITH GRANT OPTION;
+mysql> GRANT ALL PRIVILEGES ON *.* TO 'test'@'%'IDENTIFIED BY 'test' WITH GRANT OPTION;
 Query OK, 0 rows affected, 1 warning (0.00 sec)
 
 mysql> FLUSH PRIVILEGES;
@@ -174,7 +174,7 @@ mysql> select User,Host,authentication_string from user;
 | mysql.session    | localhost       | *THISISNOTAVALIDPASSWORDTHATCANBEUSEDHERE |
 | mysql.sys        | localhost       | *THISISNOTAVALIDPASSWORDTHATCANBEUSEDHERE |
 | debian-sys-maint | localhost       | *35043784ADD921E59EDF934B6A48A056BB530878 |
-| fpWriter         | %               | *35DA96C803415770CA92387E979909F587BAE16D |
+| test             | %               | *35DA96C803415770CA92387E979909F587BAE16D |
 +------------------+-----------------+-------------------------------------------+
 ```
 - 固定ip才能访问
