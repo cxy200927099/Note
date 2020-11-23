@@ -50,7 +50,8 @@ MVP:
 
 rxjava: 比较了解就好，不推荐深入
 
-
+## 网络相关
+[知识点](http://www.52im.net/thread-1963-1-1.html)
 
 
 

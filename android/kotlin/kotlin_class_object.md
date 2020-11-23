@@ -160,7 +160,8 @@ Initializing size in Derived: 10
 可以看到 是所有父类都初始化完了，才到子类初始化
 
 
-### 内部类调用基类的方法使用 `super@<外部类名>.method`
+### 内部类调用基类的方法使用
+`super@<外部类名>.method`
 ```kotlin
 class FilledRectangle: Rectangle() {
     fun draw() { /* ... */ }
