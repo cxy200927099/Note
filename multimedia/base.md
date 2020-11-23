@@ -145,6 +145,14 @@ android camera输出的颜色空间和 mediaCodec支持的颜色空间不一样
 为了避免花屏, 如果发现 P 帧或者 I 帧丢失,就不显示本 GOF 内的所有帧,知道下一个 I 帧来后重新刷新图像. 造成卡顿.
 
 
+## 音视频学习教程
+[雷霄骅]]https://blog.csdn.net/leixiaohua1020/article/details/18893769
+
+
+## video_editor
+[视频编辑相关](https://github.com/search?l=Java&o=desc&q=video-edit&s=stars&type=Repositories)
+
+[抖音特效](https://juejin.im/post/5c89dbea6fb9a049e6611efd)
 
 
 
