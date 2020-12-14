@@ -6,9 +6,15 @@
 然后会创建 ApplicationThread，这个是一个Binder的服务端继承了IApplicationThread.Stub，提供服务给system_server进程中的ApplicationThreadProxy(ATP)调用
 之后进入looper.loop()，而loop()中会循环从MsgQueue中取数据，这个操作是阻塞的(这里底层是从pipe中去读，没有消息便会阻塞，让出CPU执行权)；
 
-一张图片理解App运行过程
-![App运行过程](images/android_app_runtime.jpg)
+- 启动流程图
 
+
+
+### activity的启动过程
+![App运行过程](images/android_activity_startup.jpeg)
+
+### Service的启动过程
+![App运行过程](images/android_service_startup.png)
 
 ## 主线程死循环会不会一直消耗cpu
 不会，主线程中虽然是死循环，但是其实是阻塞去取msgQueue中数据，大多数情况下是休眠状态，不会消耗大量cpu
@@ -116,26 +122,22 @@ android提供的对象序列化方式，使用上稍微麻烦些，但是都是�
 5) 从逻辑角度来看，多线程的意义在于一个应用程序中，有多个执行部分可以同时执行。但操作系统并没有将多个线程看做多个独立的应用，来实现进程的调度和管理以及资源分配。这就是进程和线程的重要区别
 
 
-## 线程池
+## ThreadLocal
+ThreadLocal是android提供的可以为每个线程创建私有变量的类，其原理还因为每个thread都有一个ThreadLocalMap对象来管理，当给threadLocal修饰的对象赋值时，首先是获取当前的线程，然后得到线程私有的threadLocalMap对象，在把threadLocal对象作为key，设置的值value一起存入threadLocalMap
+
+## 线程池提
 ThreadPoolExecutor 主要功能就是复用线程，减少线程的创建和销毁,线程池的工作原理，当一个任务提交到线程池时；
 1. 判断核心线程池中线程是否已满，如果没满，则创建一个核心线 程执行任务，否则进入下一步
 2. 判断工作队列是否已满，没有满则加入工作队列，否则执行下一步
 3. 判断线程数是否达到了最大值，如果没有则创建非核心线程执行任务，否则执行饱和策略，默认抛出异常
 
 ### 线程池的参数
-@param corePoolSize the number of threads to keep in the pool, even
-       if they are idle, unless {@code allowCoreThreadTimeOut} is set
-@param maximumPoolSize the maximum number of threads to allow in the
-       pool
-@param keepAliveTime when the number of threads is greater than
-       the core, this is the maximum time that excess idle threads
-       will wait for new tasks before terminating.
-@param unit the time unit for the {@code keepAliveTime} argument
-@param workQueue the queue to use for holding tasks before they are
-       executed.  This queue will hold only the {@code Runnable}
-       tasks submitted by the {@code execute} method.
-@param handler the handler to use when execution is blocked
-       because the thread bounds and queue capacities are reached
+- corePoolSize 核心线程数。当线程数小于该值时，线程池会优先创建新线程来执行新任务
+- maximumPoolSize 线程池所能维护的最大线程数
+- keepAliveTime 空闲线程的存活时间
+- workQueue 任务队列，用于缓存未执行的任务
+- threadFactory 线程工厂。可通过工厂为新建的线程设置更有意义的名字
+- handler 拒绝策略。当线程池和任务队列均处于饱和状态时，使用拒绝策略处理新任务。默认是 AbortPolicy， 即直接抛出异常
 
 ### android中常用线程池
 1. FixedThreadPool:
@@ -410,12 +412,10 @@ java虚拟机规范中规定了只有执行了以下字节码指令前才会将�
 - 解决
   使用静态内部类+WeakRefernce,即 static修饰内部类，然后内部类构造函数传入acitvity,使用WeakReference来存储Activity
   更新UI的时候，需要对Activity判空处理，有可能Activity已经被回收了
-
 ### 静态集合类引起的内存泄漏
-
 ### 注册/反注册未成对使用
-
 ### Bitmap对象不再使用时，没有调用recycle()释放
+### animation对象没有及时调用cancel()取消动画
 
 
 
