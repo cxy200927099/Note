@@ -64,4 +64,161 @@ android屏幕坐标: 左上角(0,0),右下角(width, height)
 viewport坐标系: 是针对屏幕的，与屏幕坐标系一样，viewport是表示观察3d空间的窗口大小，与屏幕一样就能观察整个(-1,-1)到(1,1)的内容
 
 
+## 离屏渲染
+
+### renderToTexture
+- 初始化
+```java
+int[] framebufferIds = new int[1];
+// 申请frameBuffer
+GLES20.glGenFramebuffers(1, framebufferIds, 0);
+// 绑定到当前申请的frameBuffer
+GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, framebufferIds[0]);
+this.framebufferId = framebufferIds[0];
+// 将textureId绑定到申请的FrameBuffer
+GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER,
+        GLES20.GL_COLOR_ATTACHMENT0, GLES20.GL_TEXTURE_2D,
+        destTextureId, 0);
+```
+
+- 使用
+```java
+private void beforeDrawFrame() {
+    GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, this.framebufferId);
+    GLUtils.checkGlError("glBindFramebuffer bind");
+}
+private void afterDrawFrame() {
+    GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
+    GLUtils.checkGlError("glBindFramebuffer unbind");
+}
+
+public void renderToTexture(int srcTextureId, int destTextureId, int width, int height){
+
+    if(width != mWidth || height != mHeight || destTextureId != lastDestTextureId){
+        initFrameBuffer(destTextureId);
+        GLUtils.checkGlError("initFrameBuffer");
+        mWidth = width;
+        mHeight = height;
+        lastDestTextureId = destTextureId;
+        if(destTextureId != lastDestTextureId){
+            if(lastDestTextureId != -1){
+                GLES20.glDeleteTextures(1, new int[]{lastDestTextureId},0);
+                lastDestTextureId = -1;
+            }
+        }
+    }
+    //绑定frameBuffer
+    beforeDrawFrame();
+    GLES20.glViewport(0, 0, mWidth, mHeight);
+    GLUtils.checkGlError("glViewport before");
+    //这时候绘制的内容最后都到 destTextureId上面去了
+    mQuard.drawSelf(GLES20.GL_TEXTURE0, srcTextureId);
+    //解绑frameBuffer
+    afterDrawFrame();
+}
+```
+
+### renderToBuffer
+
+
+
+## 多线程渲染
+多线程渲染就是开几个线程用于资源上传和着色器编译，避免主线程因为传输效率或CPU编译时间导致CPU GPU闲置
+```cpp
+// 首先创建用于共享的eglContext
+EGLContext shareContext = eglCreateContext(eglDisplay, config, EGL_NO_CONTEXT, attrib2_list);
+...
+// 用这个共享context创建出其他线程渲染所需要的context
+EGLContext eglContext = eglCreateContext(eglDisplay, config, shareContext, attrib2_list);
+
+
+// 多线程渲染流程
+// 将eglContext绑定到当前线程 thread1
+eglMakeCurrent(display, surface, surface, eglContext);
+// 执行 opengl相关的操作，一般用于做资源上传着色器编译
+// glTexImage2D()上传资源
+// 将context从thread1解除绑定
+eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+```
+
+
+## openGL ES优化
+
+### shader优化
+#### 减少条件分支语句if/for的使用
+GPU不擅长处理分支结构
+1. 如下条件
+```glsl
+float4 a;
+if (b > 1) {
+  a = 1;
+}else {
+  a = 0.5;
+}
+```
+可以用 step函数来优化,step的原形为
+```glsl
+genType step (float edge, genType x)
+// 如果x < edge，返回0.0，否则返回1.0
+```
+2. 优化的结果
+```glsl
+float4 a;
+float4 tmp = step(b, 1);
+a = tmp * 0.5 + (1 - tmp);
+```
+#### 大的shader进行拆分
+把大的Shader程序采裁剪成每个Surface所需要的，而不使用大而全的Shader程序，小而精的Shader程序通常运行得更快
+#### 避免过多的varing变量
+避免使用过多的varyings：在shader编程时，在Fragment Shader程序中，尽量节约使用varings；因为在VP与内存或FP与内存间传递varings时需要消耗内存带宽
+#### 精度值
+顶点处理器基于32位浮点值工作：Vertex Shader使用浮点表示整数。为了避免32位值，设置Vertex Shader程序的输出varing的精度为mediump或lowp。
+
+### 纹理优化
+高分辨率的纹理不仅从CPU传输到GPU会耗时，在GPU中也会暂用较大内存
+- 尽量不要使用高分辨率的纹理
+### 关闭mipmapping，打开纹理映射(mipmapping)，有时可能降低了渲染质量
+### 对于大的网格，一个顶点被包含在多个三角形中，这样的顶点被处理的次数依赖调用的画图函数：
+- glDrawElements：每个顶点仅被处理一次，效率更高。
+- glDrawArrays：每个顶点数据在每一个使用它的三角形中被传输和处理一次
+### 使用顶点缓冲对象(Vertex Buffer Objects)
+  使用VBO时opengl es会将顶点数据缓存，这样可以避免每次调用draw的时候都需要传输顶点数据
+### 避免 glReadPixels 的使用
+即使读取很少像素，对性能影响也比较大，因为它暂停了pipline
+
+
+## glReadPixels 的优化方案
+[参考](https://www.mdeditor.tw/pl/pXo9)
+当调用 glReadPixels 时，首先会影响 CPU 时钟周期，同时 GPU 会等待当前帧绘制完成，读取像素完成之后，才开始下一帧的计算，造成渲染管线停滞
+### PBO
+这个是OpenGLES 3.0才有的功能,与VBO类似，也会在GPU开辟缓冲区，不过这个缓冲区是用于存放图像数据
+这样使用pbo后，glTextImage2D函数就不用从CPU传输数据到GPU，而是直接从PBO中去取数据
+一般都是使用两个pbo来处理
+
+
+### PBO的疑问
+使用两个pbo，这两个pbo的地址是怎么联系在一起的，按照pbo的使用流程，纹理从pbo1中取数据，但是从cpu传递数据传到的pbo2；
+同样的读取frameBuffer数据的时候，glReadPixels把数据读到pbo1，CPU调用 glMapBufferRange 获取的pbo2的指针地址去取数据，这是如何关联在一起的？
+
+难道是由于经过两次 glBindBuffer 之后，两个pbo buffer的缓冲区地址就共用同一个？
+```cpp
+//将图像数据从帧缓冲区读回到 PBO 中
+BEGIN_TIME("DownloadPixels glReadPixels with PBO")
+glBindBuffer(GL_PIXEL_PACK_BUFFER, m_DownloadPboIds[index]);
+glReadPixels(0, 0, m_RenderImage.width, m_RenderImage.height, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+END_TIME("DownloadPixels glReadPixels with PBO")
+
+// glMapBufferRange 获取 PBO 缓冲区指针
+BEGIN_TIME("DownloadPixels PBO glMapBufferRange")
+// 这个操作之后，pbo1和pbo2的数据缓冲区是同一个地址？
+glBindBuffer(GL_PIXEL_PACK_BUFFER, m_DownloadPboIds[nextIndex]);
+```
+### HardwareBuffer
+AHardwareBuffer 读取显存（纹理）图像数据时，需要与 GLEXT 和 EGLEXT 配合使用 ，主要步骤：首先需要创建 AHardwareBuffer 和 EGLImageKHR 对象，然后将目标纹理（FBO 的颜色附着）与 EGLImageKHR 对象绑定，渲染结束之后便可以读取纹理图像。
+
+
+
+
+
+
 
