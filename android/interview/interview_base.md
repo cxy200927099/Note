@@ -670,11 +670,39 @@ BitmapRegionDecoder只解码图片的部分区域
 5. 跳转到系统白名单界面让用户自己添加app进入白名单
 
 
-### android多线程
+## 插件化
+插件化主要解决的三个核心问题: 类加载，资源加载，生命周期管理
+- 类加载
+  主要通过 PathClassLoader 和 DexClassLoader 来加载未安装的apk, 主要就是创建 插件的 classLoader 然后反射获取DexPathList 的 dexElements 字段，在反射获取宿主工程的classLoader中的 DexPathList 的 dexElements 字段，将插件 ClassLoader 中的 dexElements 合并到宿主 ClassLoader 的 dexElements，将合并的 dexElements 设置到宿主 ClassLoader
+- 资源加载
+  通过反射 AssetManager 将插件的apk(资源)路径添加到 AssetManager 中,然后将AssetManager作为参数创建 Resource对象，在宿主 application中重写 getResource并返回插件的resource对象， 插件工程中Activity也重写getResource函数，然后返回getApplication().getResource(),因为插件工程也是运行在数组apk中的，所以获取的application也是宿主的application
+- 生命周期管理
+  比如Activity的插件化，由于Activity必须要在AndroidManifest.xml中注册，所以需要事先占坑, 如何启动我们的插件Activity呢？
+  系统启动Activity的时候都是通过 instrumentation 类实现的，所以创建个代理 instrumentation，然后实现execStartActivity，通过hook instrumentation这个类，将其替换成我们的代理类，在启动我们插件Activity的时候，将intent替换为占坑的Activity，
 
-#### 线程池
+hook其实就是反射获取某个类的属性，替换成我们定义的代理类对象,比如上面的 instrumentation类，其存在于ContextImpl的属性mMainThread(ActivityThread)中的 mInstrumentation(Instrumentation)属性中,所以我们可以用代理的Instrumentation来替换mInstrumentation从而接管 Instrumentation 的工作
 
+## 组件化
+### 组件化初衷
+- APP 版本不断的迭代，新功能的不断增加，业务也会变的越来越复杂，维 护成本高。
+- 业务耦合度高，代码越来越臃肿，团队内部多人协作开发困难。
+- Android 项目在编译代码的时候电脑会非常卡，又因为单一工程下代码耦 合严重，每修改一处代码后都要重新编译打包测试，导致非常耗时。
+- 方便单元测试，改动单独一个业务模块，不需要着重于关注其他模块被影 响。
 
+### 优势
+- 组件化就是将通用模块独立出来，统一管理，以提高复用，将页面拆分为 粒度更小的组件，组件内部除了包含 UI 实现，还包含数据层和逻辑层。
+- 每个工程都可以独立编译、加快编译速度，独立打包。
+- 每个工程内部的修改，不会影响其他工程。
+- 业务库工程可以快速拆分出来，集成到其他 App 中。
+- 迭代频繁的业务模块采用组件方式，业务线研发可以互不干扰、提升协作 效率，并控制产品质量，加强稳定性。
+- 并行开发，团队成员只关注自己的开发的小模块，降低耦合性，后期维护 方便等。
+
+### 组件化通信
+- 接口+路由
+  接口+路由实现方式则相对容易理解点，抽取一个 LibModule 作为路由服务，每个组件声明自己提供的服务 Service API，这些 Service 都是一些接口，组件负责将这些 Service 实现并注册到一个统一的路由 Router 中去，如果要使用某个组件的功能，只需要向 Router 请求这个 Service 的实现，具体的实现细节我们全然不关心，只要能返回我们需要的结果就可以了
+
+### Arouter的原理
+ARouter 核心实现思路是，我们在代码里加入的@Route 注解，会在编译时期通 过 apt 生成一些存储 path 和 activityClass 映射关系的类文件，然后 app 进程启 动的时候会拿到这些类文件，把保存这些映射关系的数据读到内存里(保存在 map 里)，然后在进行路由跳转的时候，通过 build()方法传入要到达页面的路由 地址，ARouter 会通过它自己存储的路由表找到路由地址对应的 Activity.class(activity.class = map.get(path))，然后 new Intent()，当调用 ARouter 的 withString()方法它的内部会调用 intent.putExtra(String name, String value)， 调用 navigation()方法，它的内部会调用 startActivity(intent)进行跳转，这样便可 以实现两个相互没有依赖的 module 顺利的启动对方的 Activity 了
 
 
 
@@ -703,6 +731,19 @@ Handler机制，主要问handler如何保证消息的顺序执行
 用过什么第三方框架，想要问原理
 答: 只停留在使用的地方
 
+
+
+context的理解
+
+
+view的事件分发机制
+dispatchTouchEvent没答上来
+
+热修复
+
+插件化，没做过
+
+查找链表中的回文字符
 
 
 
