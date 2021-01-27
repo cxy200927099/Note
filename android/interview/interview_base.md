@@ -125,7 +125,20 @@ android提供的对象序列化方式，使用上稍微麻烦些，但是都是�
 ## ThreadLocal
 ThreadLocal是android提供的可以为每个线程创建私有变量的类，其原理还因为每个thread都有一个ThreadLocalMap对象来管理，当给threadLocal修饰的对象赋值时，首先是获取当前的线程，然后得到线程私有的threadLocalMap对象，在把threadLocal对象作为key，设置的值value一起存入threadLocalMap
 
-## 线程池提
+## android异步相关
+
+#### HandlerThread
+HandlerThread继承了Thread，然后会创建handler并且创建自己的looper用于处理消息
+
+#### IntentService
+继承了Service，一般Service都是运行在主线程，IntentService会创建handlerThread一一处理Intent，具体就是在 OnStartCommand和OnStart 中将 Intent 通过handler发送给handlerThread,处理完成这个intent之后，IntentService会自动 调用 StopSelf来结束当前service
+
+#### AsyncTask
+##### 原理
+AsyncTask 中有两个线程池（SerialExecutor 和THREAD_POOL_EXECUTOR）和一个 Handler（InternalHandler），其中线程池 SerialExecutor 用于任务的排队，而线程池 THREAD_POOL_EXECUTOR 用于真正地执行任务，InternalHandler 用于将执行环境从线池切换到主线程。
+- sHandler 是一个静态的 Handler 对象，为了能够将执行环境切换到主线程，这就要求 sHandler 这个对象必须在主线程创建。由于静态成员会在加载类的时候进行初始化，因此这就变相要求 AsyncTask 的类必须在主线程中加载，否则同一个进程中的 AsyncTask 都将无法正常工作。
+
+## 线程池
 ThreadPoolExecutor 主要功能就是复用线程，减少线程的创建和销毁,线程池的工作原理，当一个任务提交到线程池时；
 1. 判断核心线程池中线程是否已满，如果没满，则创建一个核心线 程执行任务，否则进入下一步
 2. 判断工作队列是否已满，没有满则加入工作队列，否则执行下一步
@@ -148,11 +161,6 @@ ThreadPoolExecutor 主要功能就是复用线程，减少线程的创建和销�
   按需创建的线程池，没有核心线程，非核心线程有 Integer.MAX_VALUE 个，每次提交 任务如果有空闲线程则由空闲线程执行，没有空闲线程则创建新的线程执行，适 用于大量的需要立即处理的并且耗时较短的任务
 4. ScheduledThreadPoolExecutor:
   继承自 ThreadPoolExecutor,用于延时执行任务或 定期执行任务，核心线程数固定，线程总数为 Integer.MAX_VALUE
-
-## AsyncTask
-#### 原理
-AsyncTask 中有两个线程池（SerialExecutor 和THREAD_POOL_EXECUTOR）和一个 Handler（InternalHandler），其中线程池 SerialExecutor 用于任务的排队，而线程池 THREAD_POOL_EXECUTOR 用于真正地执行任务，InternalHandler 用于将执行环境从线池切换到主线程。
-- sHandler 是一个静态的 Handler 对象，为了能够将执行环境切换到主线程，这就要求 sHandler 这个对象必须在主线程创建。由于静态成员会在加载类的时候进行初始化，因此这就变相要求 AsyncTask 的类必须在主线程中加载，否则同一个进程中的 AsyncTask 都将无法正常工作。
 
 ## 并发
 
@@ -527,6 +535,29 @@ HTTP1.1中，连接的复用是串行的：一个请求建立了TCP连接，请�
 - 数据流-stream：基于TCP连接之上的逻辑双向字节流，用于承载双向消息，对应一个请求及其响应。客户端每发起一个请求就建立一个数据流，后续该请求及其响应的所有数据都通过该数据流传输。每个数据流都有一个唯一的标识符和可选的优先级信息。
 - 帧-frame：HTTP/2的最小数据切片单位，承载着特定类型的数据，例如 HTTP 标头、消息负载，等等。 来自不同数据流的帧可以交错发送，然后再根据每个帧头的数据流标识符重新组装，从而在宏观上实现了多个请求或响应并行传输的效果
 
+### http三次握手，四次挥手
+#### 三次握手
+主要目的是双方互相确认对方都能有 发送和接收的能力，这样才能建立可靠的连接
+![三次握手流程](images/http_handshake.png)
+
+- 为什么要三次握手，因为两次不能让双方确认对方都能有 发送和接收的能力，四次又多余了,三次就正好
+
+#### 四次挥手
+![四次手流程](images/http_wave.png)
+1. client发送fin=1 seq=u， 进入FIN_wait_1状态
+2. 服务端收到这个报文，很可能还有其
+
+- 为什么连接的时候是三次握手，关闭的时候却是四次握手？
+因为当Server端收到Client端的SYN连接请求报文后，可以直接发送SYN+ACK报文。其中ACK报文是用来应答的，SYN报文是用来同步的。但是关闭连接时，当Server端收到FIN报文时，很可能并不会立即关闭SOCKET，所以只能先回复一个ACK报文，告诉Client端，"你发的FIN报文我收到了"。只有等到我Server端所有的报文都发送完了，我才能发送FIN报文，因此不能一起发送。故需要四步握手。
+
+- 为什么TIME_WAIT状态需要经过2MSL(最大报文段生存时间)才能返回到CLOSE状态？
+虽然按道理，四个报文都发送完毕，我们可以直接进入CLOSE状态了，但是我们必须假想网络是不可靠的，有可能最后一个ACK丢失。所以TIME_WAIT状态就是用来重发可能丢失的ACK报文。
+  - 原因：1）
+  **保证A发送的最后一个ACK报文段能够到达B**.这个ACK报文段有可能丢失，使得处于LAST-ACK状态的B收不到对已发送的FIN+ACK报文段的确认，B超时重传FIN+ACK报文段，而A能在2MSL时间内收到这个重传的FIN+ACK报文段，接着A重传一次确认，重新启动2MSL计时器，最后A和B都进入到CLOSED状态，若A在TIME-WAIT状态不等待一段时间，而是发送完ACK报文段后立即释放连接，则无法收到B重传的FIN+ACK报文段，所以不会再发送一次确认报文段，则B无法正常进入到CLOSED状态。
+  - 原因：2）
+  防止“已失效的连接请求报文段”出现在本连接中。A在发送完最后一个ACK报文段后，再经过2MSL，就可以使本连接持续的时间内所产生的所有报文段都从网络中消失，使下一个新的连接中不会出现这种旧的连接请求报文段。
+
+
 ### http与https的区别
 [https详解](https://zhuanlan.zhihu.com/p/138645414)
 安全问题
@@ -538,6 +569,21 @@ TLS1.0就是SSL3.1， SSL/TLS 利用对称加密和非对称加密的特点来�
 ### https的连接过程
 ![https建立连接的过程](images/https_connect.jpg)
 
+
+### 断点续传
+原理: 主要是客户端在向服务端发起请求时， header中带上 Range字段,表示请求从文件的第几个字节开始获取内容，具体如下
+```
+Range: bytes=0-499      表示第 0-499 字节范围的内容
+Range: bytes=500-999    表示第 500-999 字节范围的内容
+Range: bytes=-500       表示最后 500 字节的内容
+Range: bytes=500-       表示从第 500 字节开始到文件结束部分的内容
+Range: bytes=0-0,-1     表示第一个和最后一个字节
+Range: bytes=500-600,601-999 同时指定几个范围
+```
+服务端收到请求后，http返回 code为206，响应的header中会带有字段 Content-length: 示例如下
+`Content-Range: bytes 10-222/7877`
+表示服务端返回的内容是从第几个字段开始的
+客户端就可以读取对应的数据，写到已经下载过的文件中，这个写用 RandomAccessFile 这个支持随机读写文件
 
 ### okhttp相关
 #### 概念
@@ -702,7 +748,45 @@ hook其实就是反射获取某个类的属性，替换成我们定义的代理�
   接口+路由实现方式则相对容易理解点，抽取一个 LibModule 作为路由服务，每个组件声明自己提供的服务 Service API，这些 Service 都是一些接口，组件负责将这些 Service 实现并注册到一个统一的路由 Router 中去，如果要使用某个组件的功能，只需要向 Router 请求这个 Service 的实现，具体的实现细节我们全然不关心，只要能返回我们需要的结果就可以了
 
 ### Arouter的原理
-ARouter 核心实现思路是，我们在代码里加入的@Route 注解，会在编译时期通 过 apt 生成一些存储 path 和 activityClass 映射关系的类文件，然后 app 进程启 动的时候会拿到这些类文件，把保存这些映射关系的数据读到内存里(保存在 map 里)，然后在进行路由跳转的时候，通过 build()方法传入要到达页面的路由 地址，ARouter 会通过它自己存储的路由表找到路由地址对应的 Activity.class(activity.class = map.get(path))，然后 new Intent()，当调用 ARouter 的 withString()方法它的内部会调用 intent.putExtra(String name, String value)， 调用 navigation()方法，它的内部会调用 startActivity(intent)进行跳转，这样便可 以实现两个相互没有依赖的 module 顺利的启动对方的 Activity 了
+ARouter 核心实现思路是，我们在代码里加入的@Route 注解，会在编译时期通 过 apt 生成一些存储 path 和 activityClass 映射关系的类文件(一般生成类文件用javapoet，这是是大名鼎鼎的squareup出品的一个开源库，是用来生成java文件的一个library)，还会有分组的情况，同一组的映射关系在同一个文件中，然后统一有一个管理分组的文件记录分组信息，然后 app 进程启 动的时候会拿到这些类文件，把保存这些映射关系的数据读到内存里(保存在 map 里)，然后在进行路由跳转的时候，通过 build()方法传入要到达页面的路由 地址，ARouter 会通过它自己存储的路由表找到路由地址对应的 Activity.class(activity.class = map.get(path))，然后 new Intent()，当调用 ARouter 的 withString()方法它的内部会调用 intent.putExtra(String name, String value)， 调用 navigation()方法，它的内部会调用 startActivity(intent)进行跳转，这样便可 以实现两个相互没有依赖的 module 顺利的启动对方的 Activity 了
+
+#### Arouter路由拦截
+```java
+// 比较经典的应用就是在跳转过程中处理登陆事件，这样就不需要在目标页重复做登陆检查
+// 拦截器会在跳转之间执行，多个拦截器会按优先级顺序依次执行
+@Interceptor(priority = 8, name = "测试用拦截器")
+public class TestInterceptor implements IInterceptor {
+    @Override
+    public void process(Postcard postcard, InterceptorCallback callback) {
+    ...
+    callback.onContinue(postcard);  // 处理完成，交还控制权
+    // callback.onInterrupt(new RuntimeException("我觉得有点异常"));      // 觉得有问题，中断路由流程
+
+    // 以上两种至少需要调用其中一种，否则不会继续路由
+    }
+
+    @Override
+    public void init(Context context) {
+    // 拦截器的初始化，会在sdk初始化的时候调用该方法，仅会调用一次
+    }
+}
+
+```
+路由拦截原理与生成路由表类似，只是路由使用的是 @Interceptor 注解，拦截器需要继承 IInterceptor，原理也是通过apt生成一些映射关系，生成的映射关会根据拦截器所在的模块划分(这样可以把不同的拦截器功能放到不同的模块中) 这个映射关系，key是优先级，value就是对应的拦截器class，程序启动后读取这个到内存中，通过反射创建拦截器对象保存到Warehouse中,Aouter在路由跳转的时候会判断是否有拦截器，所有的拦截器的处理是在线程池中依次进行处理的进行的，ARouter有个机制，就是拦截器处理有超时机制，超时中断整个路由
+
+
+### 跨进程组件通信
+- Arouter不支持跨进程的组件通信
+#### 爱奇艺开源了一个框架 [Andromeda](https://github.com/iqiyi/Andromeda/blob/master/CHINESE_README.md)
+
+#### HermesEventBus[饿了么开源的跨进程组件通信框架](https://github.com/Xiaofei-it/HermesEventBus)
+- 原理
+  事件收发是基于EventBus，IPC通信是基于Hermes。Hermes是一个简单易用的Android IPC库。首先选一个进程作为主进程，将其他进程作为子进程。
+  - 每次一个event被发送都会经过以下四步：
+  1、使用Hermes库将event传递给主进程。
+  2、主进程使用EventBus在主进程内部发送event。
+  3、主进程使用Hermes库将event传递给所有的子进程。
+  4、每个子进程使用EventBus在子进程内部发送event。
 
 
 
