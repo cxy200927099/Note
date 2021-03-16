@@ -9,7 +9,6 @@
 - 启动流程图
 
 
-
 ### activity的启动过程
 ![App运行过程](images/android_activity_startup.jpeg)
 
@@ -23,10 +22,16 @@
 上面说到在一开始，会创建 ApplicationThread，这个是ActivityThread的内部类，其通过handler想主线程发送消息；
 而且他实现了Binder的服务端，远程调用的服务端运行的时候，是运行在一个独立的线程中的，所以需要通过handler想主线程发送消息
 
+## handler同步屏障
+handler的同步屏障机制，是保证view能够得到及时的绘制从而保证界面不会卡顿，因为view的绘制也是通过handler来进行的，如果
+handler中messageQueue的消息太多，view绘制的消息得不到及时处理是不行的，
+
+同步屏障原理是因为在 messageQueue 的next()取消息时，如果遇到message.target为null的消息，会不断的跳过下一个同步消息，直到遇到第一个异步消息，这就是同步屏障，同步屏障的设置通过 messageQueue 的 postSyncBarrier 来设置，view的绘制消息都是异步消息，平常我们设置向handler发送的消息都是 同步消息
 
 # Handler机制
 looper
 messageQueue
+
 
 ## 考点
 - send message delay问题
@@ -235,168 +240,6 @@ CAS相对于其他锁，不会进行内核态操作，有着一些性能的提�
 
 
 
-## ArrayList,LinkedList,Vector
-1.ArrayList是实现了基于动态数组的数据结构，LinkedList基于链表的数据结构。
-2.对于随机访问get和set，ArrayList优于LinkedList，因为LinkedList要移动指针。
-3.对于新增和删除操作add和remove，LinedList比较占优势，因为ArrayList要移动数据
-Vector是很老的数据结构，与ArrayList类似，是线程安全的
-ArrayList和LinkedList都是线程不安全的
-
-#### ArrayList的几种遍历方式区别
-- 根据下标遍历，普通for循环方式
-```java
-for(int i = 0; i < list.size(); i++){
-  list.get(i)
-}
-```
-- for each方式,使用冒号
-```
-for(String s:list)
-```
-这种方式底层是通过迭代器来实现的
-- 迭代器方式
-```java
-Iterator it = list.iterator();
-while(it.hasNext()){
-  it.next()
-}
-```
-耗时上: 普通for循环< 迭代器 < foreach方式
-## hashmap相关
-
-#### hashmap实现原理
-- 底层数据结构
-jdk1.7 及以前，HashMap 由数组+链表组成，数组 Entry 是 HashMap 的主体，Entry 是 HashMap 中的一个静态内部类，每一个 Entry 包含一个 key-value 键值对，
-链表是为解决哈希冲突而存 在。
-从 jdk1.8 起，HashMap 是由数组+链表/红黑树组成，当某个 bucket 位置的链表长度达到阀 值 8 时，这个链表就转变成红黑树，优化了hash冲突过多时，链表太长照成的查找慢的问题
-红黑树是近似平衡树
-- 线程不安全
-存储比较快，能接受null值
-- 为什么要使用加载因子，为什么要进行扩容
-加载因子是指当 HashMap 中存储的元素/最大空间值的阀值，如果超过这个值，就会进行扩容。默认值是0.75
-加载因子是为了让空间得到充分利用，如果加载因子太大，虽对空间利用更充分，但查 找效率会降低;
-如果加载因子太小，表中的数据过于稀疏，很多空间还没用就开始扩容，就 会对空间造成浪费。
-至于为什么要扩容，如果不扩容，hash冲突就会越来越多，HashMap中entry数组某个index的链表会越来越长，这样查找效率就会大大降低。
-
-- hashmap如何扩容
-根据加载因子判断的，默认0.75，当加载因子超过0.75，则会大小扩充为原来2倍
-
-- hashmap中的数组长度一定是2的幂次
-目的是为了当hashcode值转化到数组的index时，能尽量的均匀，如何做呢？
-index = (n-1)& hashcode
-而n=2的幂次的时候，比如16，n-1之后对应的二进制数据0111(最高位为0，其他位都为1)，这样做与运算的时候，能尽量真实的获取hashcode值的低位，使其均匀
-如果不是2的幂次，比如15，n-1之后对应二进制数据1110,那么无论什么hashcode值，与上n-1之后最后一位都是0，这样table中最后一位为1的index
-0001，0011，0101，1001，1011，0111，1101这几个位置永远都不能存放元素，空间浪费很大，并且增加了hash碰撞的几率，降低查询效率
-
-#### hashmap与hashTable，HashSet
-1、HashMap是线程不安全的，在多线程环境下会容易产生死循环，但是单线程环境下运行效率高；Hashtable线程安全的，很多方法都有synchronized修饰，但同时因为加锁导致单线程环境下效率较低。
-2、HashMap允许有一个key为null，允许多个value为null；而Hashtable不允许key或者value为null。
-3 jdk1.8之后，hashmap使用了数组+链表+红黑树数据结构来实现的,而hashTable还是使用数组+链表的形式
-
-hashSet底层实现set接口，仅存储对象，使用对象来计算hashcode值
-hashmap实现map接口，存储键值对，使用key来计算hashcode
-
-#### ConcurrentHashmap
-ConcurrentHashMap 是用 Node 数组+链表+红黑树数据结构来实现的， 并发制定用 synchronized 和 CAS 操作
-
-#### linkedHashmap
-LinkedHashMap继承于HashMap，只是hashMap是无序的，LinkedHashMap内部用一个双向链表来维护entry，其定义了
-```java
-// transient表示在序列话的时候，这个成员变量不被序列化
-transient LinkedEntry<K, V> header;
-// LinkedEntry 继承于HashMapEntry
-static class LinkedEntry<K, V> extends HashMapEntry<K, V> {
-    LinkedEntry<K, V> nxt;
-    LinkedEntry<K, V> prv;
-
-    /** Create the header entry */
-    LinkedEntry() {
-        super(null, null, 0, null);
-        nxt = prv = this;
-    }
-
-    /** Create a normal entry */
-    LinkedEntry(K key, V value, int hash, HashMapEntry<K, V> next,
-                LinkedEntry<K, V> nxt, LinkedEntry<K, V> prv) {
-        super(key, value, hash, next);
-        this.nxt = nxt;
-        this.prv = prv;
-    }
-}
-```
-- 重排
-linkedHashMap在get和put的时候，如果accessOrder==true，即按访问顺序的方式排序，则需要对双向链表中
-的entry进行重排序，具体就是删除entry在链表中的位置，然后重新添加到链表的尾部
-
-##### LruCache实现原理
-android的LruCache实现就是基于LinkedHashMap，LruCache是线程安全的，内部用了`synchronize`来修饰get，put等方法
-每次调 用 get(), 则将该对象移到链表的尾端。 调用put插入新的对象也是存储在链表尾端，这样当内存缓存达到设定的最大值 时，将链表头部的对象(近期最少用到的)移除。
-
-#### SparseArray, ArrayMap
-##### SparseArray
-内部用两个数组来存储key，value，存储空间比hashMap少,使用基本类型，避免自动装箱
-在get和put的时候内部都用了二分查找算法，其存储的元素都是按照从小到大排列好的
-[关于什么时候该用SparseArray替代HashMap](https://greenspector.com/en/android-should-you-use-hashmap-or-sparsearray/)
-- 结论:
-如果使用HashMap存储的key是Integer或者Long，则建议用SparseArray来代替，网上还有说存储的item小于1000的时候用SparseArray的性能会好于HashMap
-
-##### ArrayMap
-ArrayMap是一个<key,value>映射的数据结构，它设计上更多的是考虑内存的优化，内部是使用两个数组进行数据存储，一个数组记录key的hash值，另外一个数组记录Value值，它和SparseArray一样，也会对key使用二分法进行从小到大排序，在添加、删除、查找数据的时候都是先使用二分查找法得到相应的index，然后通过index来进行添加、查找、删除等操作，所以，应用场景和SparseArray的一样，如果在数据量比较大的情况下，那么它的性能将退化至少50%
-- 如果key的类型已经确定为int类型，那么使用SparseArray，因为它避免了自动装箱的过程，如果key为long类型，它还提供了一个LongSparseArray来确保key为long类型时的使用
-- 如果key类型为其它的类型，则使用ArrayMap
-
-
-## 类加载机制
-[参考](https://juejin.cn/post/6844903505937858568)
-类加载机制首先得从类的生命周期说起
-### 类的生命周期
-类从被加载到虚拟机内存中开始，到卸载出内存为止，它的整个生命周期包括：加载（Loading）、验证（Verification）、准备（Preparation）、解析（Resolution）、初始化（Initialization）、使用（Using）和卸载（Unloading）7个阶段。其中验证、准备、解析3个部分统称为连接（Linking）
-#### 加载
-从java字节码的二进制流中加载数据，最终存到方法区中(当然在此之前还需要对加载的数据进行验证)
-#### 验证
-这一步的工作就是验证加载的数据是否合理
-- 格式验证
-  符合java虚拟机规范中规定的class文件格式，class文件的完整性;
-- 元数据验证
-    - 针对数据类型的验证,检查这个类是否有父类（除了Object之外都应有父类）
-    - 本类的父类是否继承了不允许被继承的类（被final修饰 如果本类不是抽象类，
-    - 是否实现了父类中的全部虚方法或接口
-- 字节码验证
-  - 保证任意时刻操作数栈的数据类型与指令代码序列都能配合工作。（如：不能出现这样的状况：操作栈中放了一个int类型的数据，使用却按照long或者引用类型加载）
-  - 保证跳转指令不会跳转到方法体以外的字节码指令上
-  - 类型转换是有效的（如多态）
-- 符号引用的验证
-    符号引用是一组字符串，用来描述引用的过程, 为后续解析阶段虚拟机可以将符号引用直接转为 直接引用
-#### 准备
-经过验证阶段，虚拟机从文件，数据类型，方法逻辑，符号引用等各个方面对类进行了验证，已确保代码的正确性。接下来开始为代码的运行做准备，进入准备阶段
-  - 对类变量进行初始化(不是我们程序指定的初始化值)，各类型变量的默认初始化,比如 int默认为0， String默认为null
-#### 解析
-解析阶段是将常量池中符号引用转化成直接引用的过程。主要针对常量池中的类或接口，字段，类方法，接口方法，方法类型，方法句柄，调用限定符
-java虚拟机规范中规定了只有执行了以下字节码指令前才会将所用到的符号引用转化为直接引用：
-- anewarray 创建一个引用类型的数组
-- checkcast 检查对象是否是给定类型
-- getfield putfield 从对象获取某一个字段 设置对象的字段
-- getstatic putstatic 从类中获取某一静态变量 设置静态变量
-- instanceof 确定对象是否是给定类型
-- invokedynamic invokeinterface invokestatic invokevirtual 调用动态方法，接口方法，静态方法，虚方法
-- invokespecial 调用实例化方法，私有方法，父类中的方法
-- ldc idc_w 把常量池中的项压入栈
-- multianewarray 创建多为引用类型性数组
-- new 实例化对象
-#### 初始化
-阶段是为类设置类变量的值和一些其他初始化操作的阶段（如执行static{ }静态代码块）。
-#### 使用
-程序中正常使用类，比如new一个对象
-
-#### 卸载
-由java虚拟机去处理
-
-## 双亲委派机制
-双亲委派是类加载器加载class时的一种策略，就是判断该类 是否已经加载，如果没有则不是自身去查找而是委托给父加载器进行查找，这样 依次进行递归，直到委托到最顶层的 Bootstrap ClassLoader,如果 Bootstrap ClassLoader 找到了该 Class,就会直接返回，如果没找到，则继续依次向下查找， 如果还没找到则最后交给自身去查找
-### 双亲委托模式的好处
-1.避免重复加载，如果已经加载过一次 Class，则不需要再次加载，而是直接读取 已经加载的 Class
-2.更加安全，确保，java 核心 api 中定义类型不会被随意替换，比如，采用双亲 委托模式可以使得系统在 Java 虚拟机启动时就加载了 String 类，也就无法用自定 义的 String 类来替换系统的 String 类，这样便可以防止核心 API 库被随意篡改
-
 ## android类加载器
 - PathClassLoader: 主要用于系统和app的类加载器,其中optimizedDirectory为null, 采用默认目录/data/dalvik-cache/
 - DexClassLoader: 可以从包含classes.dex的jar或者apk中，加载类的类加载器, 可用于执行动态加载,但必须是app私有可写目录来缓存odex文件. 能够加载系统没有安装的apk或者jar文件， 因此很多插件化方案都是采用DexClassLoader;
@@ -406,7 +249,7 @@ java虚拟机规范中规定了只有执行了以下字节码指令前才会将�
 ## 热修复原理
 1. 下发补丁（内含修复好的 class）到用户手机，即让 app 从 服务器上下载（网络传输）
 2. app 通过**"某种方式"**，使补丁中的 class 被 app 调用（本 地更新）
-这里某种方式就涉及到android的类加载机制，android中对class进行了优化，将多个class合并成一个dex文件，android的在加载dex的类加载器中有个DexPathList,在DexPathList.findClass()过程，一个Classloader可以包含多个dex文件，每个dex文件被封装到一个Element对象，这些Element对象排列成有序的数组dexElements。当查找某个类时，会遍历所有的dex文件，如果找到则直接返回，不再继续遍历dexElements。也就是说当两个类不同的dex中出现，会优先处理排在前面的dex文件，这便是热修复的核心精髓，将需要修复的类所打包的dex文件插入到dexElements前面
+这里某种方式就涉及到android的类加载机制，android中对class进行了优化，将多个class合并成一个dex文件，android的在加载dex的类加载器中有个DexPathList,在DexPathList.findClass()过程，一个Classloader可以包含多个dex文件，每个dex文件被封装到一个Element对象，这些Element对象排列成有序的数组dexElements。当查找某个类时，会遍历所有的dex文件，如果找到则直接返回，不再继续遍历dexElements。也就是说当两个相同的dex中出现，会优先处理排在前面的dex文件，这便是热修复的核心精髓，将需要修复的类所打包的dex文件插入到dexElements前面
 
 
 ## 导致内存泄漏的原因
@@ -424,228 +267,6 @@ java虚拟机规范中规定了只有执行了以下字节码指令前才会将�
 ### 注册/反注册未成对使用
 ### Bitmap对象不再使用时，没有调用recycle()释放
 ### animation对象没有及时调用cancel()取消动画
-
-
-
-## 网络方面
-
-### http常见错误码
-- 常见的错误码
-200 - 服务器成功返回网页
-404 - 请求的网页不存在
-503 - 服务不可用
-
-- 1xx（临时响应）
-表示临时响应并需要请求者继续执行操作的状态代码。
-
-代码 说明
-100 （继续） 请求者应当继续提出请求。服务器返回此代码表示已收到请求的第一部分，正在等待其余部分。
-101 （切换协议） 请求者已要求服务器切换协议，服务器已确认并准备切换。
-
-- 2xx （成功）
-表示成功处理了请求的状态代码。
-
-代码 说明
-200 （成功） 服务器已成功处理了请求。通常，这表示服务器提供了请求的网页。
-201 （已创建） 请求成功并且服务器创建了新的资源。
-202 （已接受） 服务器已接受请求，但尚未处理。
-203 （非授权信息） 服务器已成功处理了请求，但返回的信息可能来自另一来源。
-204 （无内容） 服务器成功处理了请求，但没有返回任何内容。
-205 （重置内容） 服务器成功处理了请求，但没有返回任何内容。
-206 （部分内容） 服务器成功处理了部分 GET 请求。
-
-- 3xx （重定向）
-表示要完成请求，需要进一步操作。 通常，这些状态代码用来重定向。
-
-代码 说明
-300 （多种选择） 针对请求，服务器可执行多种操作。服务器可根据请求者 (user agent) 选择一项操作，或提供操作列表供请求者选择。
-301 （永久移动） 请求的网页已永久移动到新位置。服务器返回此响应（对 GET 或 HEAD 请求的响应）时，会自动将请求者转到新位置。
-302 （临时移动） 服务器目前从不同位置的网页响应请求，但请求者应继续使用原有位置来进行以后的请求。
-303 （查看其他位置） 请求者应当对不同的位置使用单独的 GET 请求来检索响应时，服务器返回此代码。
-304 （未修改） 自从上次请求后，请求的网页未修改过。服务器返回此响应时，不会返回网页内容。
-305 （使用代理） 请求者只能使用代理访问请求的网页。如果服务器返回此响应，还表示请求者应使用代理。
-307 （临时重定向） 服务器目前从不同位置的网页响应请求，但请求者应继续使用原有位置来进行以后的请求。
-
-- 4xx（请求错误）
-这些状态代码表示请求可能出错，妨碍了服务器的处理。
-
-代码 说明
-400 （错误请求） 服务器不理解请求的语法。
-401 （未授权） 请求要求身份验证。 对于需要登录的网页，服务器可能返回此响应。
-403 （禁止） 服务器拒绝请求。
-404 （未找到） 服务器找不到请求的网页。
-405 （方法禁用） 禁用请求中指定的方法。
-406 （不接受） 无法使用请求的内容特性响应请求的网页。
-407 （需要代理授权） 此状态代码与 401（未授权）类似，但指定请求者应当授权使用代理。
-408 （请求超时） 服务器等候请求时发生超时。
-409 （冲突） 服务器在完成请求时发生冲突。服务器必须在响应中包含有关冲突的信息。
-410 （已删除） 如果请求的资源已永久删除，服务器就会返回此响应。
-411 （需要有效长度） 服务器不接受不含有效内容长度标头字段的请求。
-412 （未满足前提条件） 服务器未满足请求者在请求中设置的其中一个前提条件。
-413 （请求实体过大） 服务器无法处理请求，因为请求实体过大，超出服务器的处理能力。
-414 （请求的 URI 过长） 请求的 URI（通常为网址）过长，服务器无法处理。
-415 （不支持的媒体类型） 请求的格式不受请求页面的支持。
-416 （请求范围不符合要求） 如果页面无法提供请求的范围，则服务器会返回此状态代码。
-417 （未满足期望值） 服务器未满足”期望”请求标头字段的要求。
-
-- 5xx（服务器错误）
-这些状态代码表示服务器在尝试处理请求时发生内部错误。 这些错误可能是服务器本身的错误，而不是请求出错。
-
-代码 说明
-500 （服务器内部错误） 服务器遇到错误，无法完成请求。
-501 （尚未实施） 服务器不具备完成请求的功能。例如，服务器无法识别请求方法时可能会返回此代码。
-502 （错误网关） 服务器作为网关或代理，从上游服务器收到无效响应。
-503 （服务不可用） 服务器目前无法使用（由于超载或停机维护）。通常，这只是暂时状态。
-504 （网关超时） 服务器作为网关或代理，但是没有及时从上游服务器收到请求。
-505 （HTTP 版本不受支持） 服务器不支持请求中所用的 HTTP 协议版本。
-
-
-
-#### HttpWatch状态码Result is
-200 - 服务器成功返回网页，客户端请求已成功。
-302 - 对象临时移动。服务器目前从不同位置的网页响应请求，但请求者应继续使用原有位置来进行以后的请求。
-304 - 属于重定向。自上次请求后，请求的网页未修改过。服务器返回此响应时，不会返回网页内容。
-401 - 未授权。请求要求身份验证。 对于需要登录的网页，服务器可能返回此响应。
-404 - 未找到。服务器找不到请求的网页。
-2xx - 成功。表示服务器成功地接受了客户端请求。
-3xx - 重定向。表示要完成请求，需要进一步操作。客户端浏览器必须采取更多操作来实现请求。例如，浏览器可能不得不请求服务器上的不同的页面，或通过代理服务器重复该请求。
-4xx - 请求错误。这些状态代码表示请求可能出错，妨碍了服务器的处理。
-5xx - 服务器错误。表示服务器在尝试处理请求时发生内部错误。 这些错误可能是服务器本身的错误，而不是请求出错。
-
-### http1.0 1.1 2.0的区别
-- 1.0
-在HTTP1.0中，一次请求 会建立一个TCP连接，请求完成后主动断开连接。这种方法的好处是简单，各个请求互不干扰。
-但每次请求都会经历 3次握手、2次或4次挥手的连接建立和断开过程——极大影响网络效率和系统开销
-- 1.1
-在HTTP1.1中，解决了HTTP1.0中连接不能复用的问题，支持持久连接——使用keep-alive机制：一次HTTP请求结束后不会立即断开TCP连接，如果此时有新的HTTP请求，且其请求的Host同上次请求相同，那么会直接复用TCP连接。这样就减少了建立和关闭连接的消耗和延迟。keep-alive机制在HTTP1.1中是默认打开的——即在请求头添加：connection:keep-alive
-- 2.0
-HTTP1.1中，连接的复用是串行的：一个请求建立了TCP连接，请求完成后，下一个相同host的请求继续使用这个连接。 但客户端想 同时 发起多个并行请求，那么必须建立多个TCP连接。将会产生网络延迟、增大网路开销。
-并且HTTP1.1不会压缩请求和响应报头，导致了不必要的网络流量；HTTP1.1不支持资源优先级导致底层TCP连接利用率低下。在HTTP2.0中，这些问题都会得到解决，HTTP2.0主要有以下特性
-  - 新的二进制格式（Binary Format）：
-  http/1.x使用的是明文协议，其协议格式由三部分组成：request line，header，body，其协议解析是基于文本，但是这种方式存在天然缺陷，文本的表现形式有多样性，要做到健壮性考虑的场景必然很多，二进制则不同，只认0和1的组合；基于这种考虑，http/2.0的协议解析决定采用二进制格式，实现方便且健壮
-  - 多路复用（MultiPlexing）：
-  即连接共享，使用streamId用来区分请求，一个request对应一个stream并分配一个id，这样一个TCP连接上可以有多个stream，每个stream的frame可以随机的混杂在一起，接收方可以根据stream id将frame再归属到各自不同的request里面
-  - 优先级和依赖（Priority、Dependency）：
-  每个stream都可以设置优先级和依赖，优先级高的stream会被server优先处理和返回给客户端，stream还可以依赖其它的sub streams；优先级和依赖都是可以动态调整的，比如在APP上浏览商品列表，用户快速滑动到底部，但是前面的请求已经发出，如果不把后面的优先级设高，那么当前浏览的图片将会在最后展示出来，显然不利于用户体验
-  - header压缩：
-  http2.0使用encoder来减少需要传输的header大小，通讯双方各自cache一份header fields表，既避免了重复header的传输，又减小了需要传输的大小
-  - 重置连接：
-  很多APP里都有停止下载图片的需求，对于http1.x来说，是直接断开连接，导致下次再发请求必须重新建立连接；http2.0引入RST_STREAM类型的frame，可以在不断开连接的前提下取消某个request的stream
-#### 其中涉及了两个新的概念：
-- 数据流-stream：基于TCP连接之上的逻辑双向字节流，用于承载双向消息，对应一个请求及其响应。客户端每发起一个请求就建立一个数据流，后续该请求及其响应的所有数据都通过该数据流传输。每个数据流都有一个唯一的标识符和可选的优先级信息。
-- 帧-frame：HTTP/2的最小数据切片单位，承载着特定类型的数据，例如 HTTP 标头、消息负载，等等。 来自不同数据流的帧可以交错发送，然后再根据每个帧头的数据流标识符重新组装，从而在宏观上实现了多个请求或响应并行传输的效果
-
-### http三次握手，四次挥手
-#### 三次握手
-主要目的是双方互相确认对方都能有 发送和接收的能力，这样才能建立可靠的连接
-![三次握手流程](images/http_handshake.png)
-
-- 为什么要三次握手，因为两次不能让双方确认对方都能有 发送和接收的能力，四次又多余了,三次就正好
-
-#### 四次挥手
-![四次手流程](images/http_wave.png)
-1. client发送fin=1 seq=u， 进入FIN_wait_1状态
-2. 服务端收到这个报文，很可能还有其
-
-- 为什么连接的时候是三次握手，关闭的时候却是四次握手？
-因为当Server端收到Client端的SYN连接请求报文后，可以直接发送SYN+ACK报文。其中ACK报文是用来应答的，SYN报文是用来同步的。但是关闭连接时，当Server端收到FIN报文时，很可能并不会立即关闭SOCKET，所以只能先回复一个ACK报文，告诉Client端，"你发的FIN报文我收到了"。只有等到我Server端所有的报文都发送完了，我才能发送FIN报文，因此不能一起发送。故需要四步握手。
-
-- 为什么TIME_WAIT状态需要经过2MSL(最大报文段生存时间)才能返回到CLOSE状态？
-虽然按道理，四个报文都发送完毕，我们可以直接进入CLOSE状态了，但是我们必须假想网络是不可靠的，有可能最后一个ACK丢失。所以TIME_WAIT状态就是用来重发可能丢失的ACK报文。
-  - 原因：1）
-  **保证A发送的最后一个ACK报文段能够到达B**.这个ACK报文段有可能丢失，使得处于LAST-ACK状态的B收不到对已发送的FIN+ACK报文段的确认，B超时重传FIN+ACK报文段，而A能在2MSL时间内收到这个重传的FIN+ACK报文段，接着A重传一次确认，重新启动2MSL计时器，最后A和B都进入到CLOSED状态，若A在TIME-WAIT状态不等待一段时间，而是发送完ACK报文段后立即释放连接，则无法收到B重传的FIN+ACK报文段，所以不会再发送一次确认报文段，则B无法正常进入到CLOSED状态。
-  - 原因：2）
-  防止“已失效的连接请求报文段”出现在本连接中。A在发送完最后一个ACK报文段后，再经过2MSL，就可以使本连接持续的时间内所产生的所有报文段都从网络中消失，使下一个新的连接中不会出现这种旧的连接请求报文段。
-
-
-### http与https的区别
-[https详解](https://zhuanlan.zhihu.com/p/138645414)
-安全问题
-- http: http位于OSI网络模型的应用层，采用明文方式进行传输，非常不安全，容易被人篡改和窃取数据
-- SSL(Secure Socket Layer):位于TCP传输层和应用层之间，用于web安全传输的协议，后来重新命名为TLC(Transport Layer Security)
-TLS1.0就是SSL3.1， SSL/TLS 利用对称加密和非对称加密的特点来实现安全的
-- https: 建立在SSL/TLS协议之上，通过SSL/TLS进行加密
-
-### https的连接过程
-![https建立连接的过程](images/https_connect.jpg)
-
-
-### 断点续传
-原理: 主要是客户端在向服务端发起请求时， header中带上 Range字段,表示请求从文件的第几个字节开始获取内容，具体如下
-```
-Range: bytes=0-499      表示第 0-499 字节范围的内容
-Range: bytes=500-999    表示第 500-999 字节范围的内容
-Range: bytes=-500       表示最后 500 字节的内容
-Range: bytes=500-       表示从第 500 字节开始到文件结束部分的内容
-Range: bytes=0-0,-1     表示第一个和最后一个字节
-Range: bytes=500-600,601-999 同时指定几个范围
-```
-服务端收到请求后，http返回 code为206，响应的header中会带有字段 Content-length: 示例如下
-`Content-Range: bytes 10-222/7877`
-表示服务端返回的内容是从第几个字段开始的
-客户端就可以读取对应的数据，写到已经下载过的文件中，这个写用 RandomAccessFile 这个支持随机读写文件
-
-### okhttp相关
-#### 概念
-- OkHttpClient
-  采用了建造者模式来创建
-- Request
-  请求对象
-```java
-  Request request = new Request.Builder()
-    .url(url)
-    .build();
-```
-- Call
-  OkHttpClient 实现了Call.Factory，负责根据请求创建新的 Call。callFactory 负责创建 HTTP 请求，HTTP 请求被抽象为了 okhttp3.Call 类，它表示一个已经准备好，可以随时执行的 HTTP 请求
-
-#### 实际请求
-1. 同步请求(阻塞的)
-```java
-Response response = call.execute();
-```
-2. 异步请求
-```java
-call.enqueue(new Callback() {
-    @Override
-    public void onFailure(Call call, IOException e) {
-    }
-
-    @Override
-    public void onResponse(Call call, Response response) throws IOException {
-        System.out.println(response.body().string());
-    }
-});
-```
-### 特点
-1. 采用线程池来处理请求，默认最大并发64，
-2. 采用连接池技术，支持5个并发的socket连接，减少tcp握手和挥手次数
-3. 支持gzip压缩
-4. 支持响应缓存从而避免重复的网络请求
-5. 请求失败，自动重连，发生异常时重连
-6. 很方便的拦截器，拦截器用来添加，移除，转换请求和响应 的头部信息，比如添加公参等
-
-#### okhttp拦截器
-1. RetryAndFollowUpInterceptor
-  作用是连接失败后进行重试、对请求结果跟进后进行重定向
-2. BridgeInterceptor
-  意为 桥拦截器，相当于 在 请求发起端 和 网络执行端 架起一座桥，把应用层发出的请求 变为 网络层认识的请求，把网络层执行后的响应 变为 应用层便于应用层使用的结果，对请求添加了header："Content-Type"、"Content-Length" 或 "Transfer-Encoding"、"Host"、"Connection"、"Accept-Encoding"、"Cookie"、"User-Agent"，即网络层真正可执行的请求
-3. CacheInterceptor
-  缓存拦截器，对相同的url请求，会进行缓存，以减少网络开销，同时处理了http缓存的一整套逻辑，判断缓存是否过期，header是否设置了etag，Last-Modified，Date
-![http缓存原理](images/http_cache.png)
-
-4. ConnectInterceptor
-  连接拦截器[参考这里](https://cloud.tencent.com/developer/article/1667344),主要管理tcp连接的复用，复用逻辑，通过ExchangeFinder寻找可用的tcp连接，如果有可用的直接复用，否则新建一个链接，如下图
-  ![查找连接](images/okhttp_connection_pool.png)
-  连接池中的连接是否可用，是通过判断 connection.transmitters(连接上的数据流的数量是否为空来判断的，transmitter数据流即表示一个请求，这就算tcp连接多路复用的实现，当连接数量为空时，会给连接的空闲时间设为5分钟之前，表示连接已经超过最大空闲时间，后续需要清理掉的连接)，这个操作在将连接存入连接池之前会调用的清理操作中处理的；
-  从连接池中取连接的操作，就是遍历连接池，进行进行地址等一系列匹配
-  删除连接，连接上没有数据流，就关闭socket，等待被清理
-
-5. CallServerInterceptor
-  请求服务拦截器，也就是真正地去进行网络IO读写了——写入http请求的header和body数据、读取响应的header和body。
-
-### okhttp整体架构图
-![okhttp整体架构图](images/okhttp_struct.png)
 
 
 ## android优化
@@ -716,86 +337,13 @@ BitmapRegionDecoder只解码图片的部分区域
 5. 跳转到系统白名单界面让用户自己添加app进入白名单
 
 
-## 插件化
-插件化主要解决的三个核心问题: 类加载，资源加载，生命周期管理
-- 类加载
-  主要通过 PathClassLoader 和 DexClassLoader 来加载未安装的apk, 主要就是创建 插件的 classLoader 然后反射获取DexPathList 的 dexElements 字段，在反射获取宿主工程的classLoader中的 DexPathList 的 dexElements 字段，将插件 ClassLoader 中的 dexElements 合并到宿主 ClassLoader 的 dexElements，将合并的 dexElements 设置到宿主 ClassLoader
-- 资源加载
-  通过反射 AssetManager 将插件的apk(资源)路径添加到 AssetManager 中,然后将AssetManager作为参数创建 Resource对象，在宿主 application中重写 getResource并返回插件的resource对象， 插件工程中Activity也重写getResource函数，然后返回getApplication().getResource(),因为插件工程也是运行在数组apk中的，所以获取的application也是宿主的application
-- 生命周期管理
-  比如Activity的插件化，由于Activity必须要在AndroidManifest.xml中注册，所以需要事先占坑, 如何启动我们的插件Activity呢？
-  系统启动Activity的时候都是通过 instrumentation 类实现的，所以创建个代理 instrumentation，然后实现execStartActivity，通过hook instrumentation这个类，将其替换成我们的代理类，在启动我们插件Activity的时候，将intent替换为占坑的Activity，
-
-hook其实就是反射获取某个类的属性，替换成我们定义的代理类对象,比如上面的 instrumentation类，其存在于ContextImpl的属性mMainThread(ActivityThread)中的 mInstrumentation(Instrumentation)属性中,所以我们可以用代理的Instrumentation来替换mInstrumentation从而接管 Instrumentation 的工作
-
-## 组件化
-### 组件化初衷
-- APP 版本不断的迭代，新功能的不断增加，业务也会变的越来越复杂，维 护成本高。
-- 业务耦合度高，代码越来越臃肿，团队内部多人协作开发困难。
-- Android 项目在编译代码的时候电脑会非常卡，又因为单一工程下代码耦 合严重，每修改一处代码后都要重新编译打包测试，导致非常耗时。
-- 方便单元测试，改动单独一个业务模块，不需要着重于关注其他模块被影 响。
-
-### 优势
-- 组件化就是将通用模块独立出来，统一管理，以提高复用，将页面拆分为 粒度更小的组件，组件内部除了包含 UI 实现，还包含数据层和逻辑层。
-- 每个工程都可以独立编译、加快编译速度，独立打包。
-- 每个工程内部的修改，不会影响其他工程。
-- 业务库工程可以快速拆分出来，集成到其他 App 中。
-- 迭代频繁的业务模块采用组件方式，业务线研发可以互不干扰、提升协作 效率，并控制产品质量，加强稳定性。
-- 并行开发，团队成员只关注自己的开发的小模块，降低耦合性，后期维护 方便等。
-
-### 组件化通信
-- 接口+路由
-  接口+路由实现方式则相对容易理解点，抽取一个 LibModule 作为路由服务，每个组件声明自己提供的服务 Service API，这些 Service 都是一些接口，组件负责将这些 Service 实现并注册到一个统一的路由 Router 中去，如果要使用某个组件的功能，只需要向 Router 请求这个 Service 的实现，具体的实现细节我们全然不关心，只要能返回我们需要的结果就可以了
-
-### Arouter的原理
-ARouter 核心实现思路是，我们在代码里加入的@Route 注解，会在编译时期通 过 apt 生成一些存储 path 和 activityClass 映射关系的类文件(一般生成类文件用javapoet，这是是大名鼎鼎的squareup出品的一个开源库，是用来生成java文件的一个library)，还会有分组的情况，同一组的映射关系在同一个文件中，然后统一有一个管理分组的文件记录分组信息，然后 app 进程启 动的时候会拿到这些类文件，把保存这些映射关系的数据读到内存里(保存在 map 里)，然后在进行路由跳转的时候，通过 build()方法传入要到达页面的路由 地址，ARouter 会通过它自己存储的路由表找到路由地址对应的 Activity.class(activity.class = map.get(path))，然后 new Intent()，当调用 ARouter 的 withString()方法它的内部会调用 intent.putExtra(String name, String value)， 调用 navigation()方法，它的内部会调用 startActivity(intent)进行跳转，这样便可 以实现两个相互没有依赖的 module 顺利的启动对方的 Activity 了
-
-#### Arouter路由拦截
-```java
-// 比较经典的应用就是在跳转过程中处理登陆事件，这样就不需要在目标页重复做登陆检查
-// 拦截器会在跳转之间执行，多个拦截器会按优先级顺序依次执行
-@Interceptor(priority = 8, name = "测试用拦截器")
-public class TestInterceptor implements IInterceptor {
-    @Override
-    public void process(Postcard postcard, InterceptorCallback callback) {
-    ...
-    callback.onContinue(postcard);  // 处理完成，交还控制权
-    // callback.onInterrupt(new RuntimeException("我觉得有点异常"));      // 觉得有问题，中断路由流程
-
-    // 以上两种至少需要调用其中一种，否则不会继续路由
-    }
-
-    @Override
-    public void init(Context context) {
-    // 拦截器的初始化，会在sdk初始化的时候调用该方法，仅会调用一次
-    }
-}
-
-```
-路由拦截原理与生成路由表类似，只是路由使用的是 @Interceptor 注解，拦截器需要继承 IInterceptor，原理也是通过apt生成一些映射关系，生成的映射关会根据拦截器所在的模块划分(这样可以把不同的拦截器功能放到不同的模块中) 这个映射关系，key是优先级，value就是对应的拦截器class，程序启动后读取这个到内存中，通过反射创建拦截器对象保存到Warehouse中,Aouter在路由跳转的时候会判断是否有拦截器，所有的拦截器的处理是在线程池中依次进行处理的进行的，ARouter有个机制，就是拦截器处理有超时机制，超时中断整个路由
 
 
-### 跨进程组件通信
-- Arouter不支持跨进程的组件通信
-#### 爱奇艺开源了一个框架 [Andromeda](https://github.com/iqiyi/Andromeda/blob/master/CHINESE_README.md)
-
-#### HermesEventBus[饿了么开源的跨进程组件通信框架](https://github.com/Xiaofei-it/HermesEventBus)
-- 原理
-  事件收发是基于EventBus，IPC通信是基于Hermes。Hermes是一个简单易用的Android IPC库。首先选一个进程作为主进程，将其他进程作为子进程。
-  - 每次一个event被发送都会经过以下四步：
-  1、使用Hermes库将event传递给主进程。
-  2、主进程使用EventBus在主进程内部发送event。
-  3、主进程使用Hermes库将event传递给所有的子进程。
-  4、每个子进程使用EventBus在子进程内部发送event。
-
-
-
-
-view绘制原理,
-测量的几种方式，区别
-view事件分发机制，
-ontouch和onTouchEvent的区别
-如果ontouch设置了，返回true，那onTouchEvent不会被调用
+#### ontouch和onTouchEvent的区别
+- ontouch是 view的 OnTouchListener接口的方法
+- onTouchEvent是 view的方法
+在view的 dispatchTouchEvent函数中，如果view设置了onTouchListener接口，且onTouch返回true表示消费该事件
+则 event事件不会分发给 onTouchEvent
 
 
 binder原理，binder底层原理不是很了解，主要用AIDL比较多

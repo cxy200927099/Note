@@ -1,8 +1,160 @@
+[TOC]
 
 # java base
 
+## java常用容器
+### ArrayList,LinkedList,Vector
+1.ArrayList是实现了基于动态数组的数据结构，LinkedList基于链表的数据结构。
+2.对于随机访问get和set，ArrayList优于LinkedList，因为LinkedList要移动指针。
+3.对于新增和删除操作add和remove，LinedList比较占优势，因为ArrayList要移动数据
+Vector是很老的数据结构，与ArrayList类似，是线程安全的
+ArrayList和LinkedList都是线程不安全的
+
+#### ArrayList的几种遍历方式区别
+- 根据下标遍历，普通for循环方式
+```java
+for(int i = 0; i < list.size(); i++){
+  list.get(i)
+}
+```
+- for each方式,使用冒号
+```
+for(String s:list)
+```
+这种方式底层是通过迭代器来实现的
+- 迭代器方式
+```java
+Iterator it = list.iterator();
+while(it.hasNext()){
+  it.next()
+}
+```
+耗时上: 普通for循环< 迭代器 < foreach方式
+### hashmap相关
+
+#### hashmap实现原理
+- 底层数据结构
+jdk1.7 及以前，HashMap 由数组+链表组成，数组 Entry 是 HashMap 的主体，Entry 是 HashMap 中的一个静态内部类，每一个 Entry 包含一个 key-value 键值对，
+链表是为解决哈希冲突而存 在。
+从 jdk1.8 起，HashMap 是由数组+链表/红黑树组成，当某个 bucket 位置的链表长度达到阀 值 8 时，这个链表就转变成红黑树，优化了hash冲突过多时，链表太长照成的查找慢的问题
+红黑树是近似平衡树
+- 线程不安全
+存储比较快，能接受null值
+- 为什么要使用加载因子，为什么要进行扩容
+加载因子是指当 HashMap 中存储的元素/最大空间值的阀值，如果超过这个值，就会进行扩容。默认值是0.75
+加载因子是为了让空间得到充分利用，如果加载因子太大，虽对空间利用更充分，但查 找效率会降低;
+如果加载因子太小，表中的数据过于稀疏，很多空间还没用就开始扩容，就 会对空间造成浪费。
+至于为什么要扩容，如果不扩容，hash冲突就会越来越多，HashMap中entry数组某个index的链表会越来越长，这样查找效率就会大大降低。
+
+- hashmap如何扩容
+根据加载因子判断的，默认0.75，当加载因子超过0.75，则会大小扩充为原来2倍
+
+- hashmap中的数组长度一定是2的幂次
+目的是为了当hashcode值转化到数组的index时，能尽量的均匀，如何做呢？
+index = (n-1)& hashcode
+而n=2的幂次的时候，比如16，n-1之后对应的二进制数据0111(最高位为0，其他位都为1)，这样做与运算的时候，能尽量真实的获取hashcode值的低位，使其均匀
+如果不是2的幂次，比如15，n-1之后对应二进制数据1110,那么无论什么hashcode值，与上n-1之后最后一位都是0，这样table中最后一位为1的index
+0001，0011，0101，1001，1011，0111，1101这几个位置永远都不能存放元素，空间浪费很大，并且增加了hash碰撞的几率，降低查询效率
+
+### hashmap与hashTable，HashSet
+1、HashMap是线程不安全的，在多线程环境下会容易产生死循环，但是单线程环境下运行效率高；Hashtable线程安全的，很多方法都有synchronized修饰，但同时因为加锁导致单线程环境下效率较低。
+2、HashMap允许有一个key为null，允许多个value为null；而Hashtable不允许key或者value为null。
+3 jdk1.8之后，hashmap使用了数组+链表+红黑树数据结构来实现的,而hashTable还是使用数组+链表的形式
+
+hashSet底层实现set接口，仅存储对象，使用对象来计算hashcode值
+hashmap实现map接口，存储键值对，使用key来计算hashcode
+
+### ConcurrentHashmap
+ConcurrentHashMap 是用 Node 数组+链表+红黑树数据结构来实现的， 并发制定用 synchronized 和 CAS 操作
+
+### linkedHashmap
+LinkedHashMap继承于HashMap，只是hashMap是无序的，LinkedHashMap内部用一个双向链表来维护entry，其定义了
+```java
+// transient表示在序列话的时候，这个成员变量不被序列化
+transient LinkedEntry<K, V> header;
+// LinkedEntry 继承于HashMapEntry
+static class LinkedEntry<K, V> extends HashMapEntry<K, V> {
+    LinkedEntry<K, V> nxt;
+    LinkedEntry<K, V> prv;
+
+    /** Create the header entry */
+    LinkedEntry() {
+        super(null, null, 0, null);
+        nxt = prv = this;
+    }
+
+    /** Create a normal entry */
+    LinkedEntry(K key, V value, int hash, HashMapEntry<K, V> next,
+                LinkedEntry<K, V> nxt, LinkedEntry<K, V> prv) {
+        super(key, value, hash, next);
+        this.nxt = nxt;
+        this.prv = prv;
+    }
+}
+```
+- 重排
+linkedHashMap在get和put的时候，如果accessOrder==true，即按访问顺序的方式排序，则需要对双向链表中
+的entry进行重排序，具体就是删除entry在链表中的位置，然后重新添加到链表的尾部
+
+#### LruCache实现原理
+android的LruCache实现就是基于LinkedHashMap，LruCache是线程安全的，内部用了`synchronize`来修饰get，put等方法
+每次调 用 get(), 则将该对象移到链表的尾端。 调用put插入新的对象也是存储在链表尾端，这样当内存缓存达到设定的最大值 时，将链表头部的对象(近期最少用到的)移除。
+
+### SparseArray, ArrayMap
+##### SparseArray
+内部用两个数组来存储key，value，存储空间比hashMap少,使用基本类型，避免自动装箱
+在get和put的时候内部都用了二分查找算法，其存储的元素都是按照从小到大排列好的
+[关于什么时候该用SparseArray替代HashMap](https://greenspector.com/en/android-should-you-use-hashmap-or-sparsearray/)
+- 结论:
+如果使用HashMap存储的key是Integer或者Long，则建议用SparseArray来代替，网上还有说存储的item小于1000的时候用SparseArray的性能会好于HashMap
+
+### ArrayMap
+ArrayMap是一个<key,value>映射的数据结构，它设计上更多的是考虑内存的优化，内部是使用两个数组进行数据存储，一个数组记录key的hash值，另外一个数组记录Value值，它和SparseArray一样，也会对key使用二分法进行从小到大排序，在添加、删除、查找数据的时候都是先使用二分查找法得到相应的index，然后通过index来进行添加、查找、删除等操作，所以，应用场景和SparseArray的一样，如果在数据量比较大的情况下，那么它的性能将退化至少50%
+- 如果key的类型已经确定为int类型，那么使用SparseArray，因为它避免了自动装箱的过程，如果key为long类型，它还提供了一个LongSparseArray来确保key为long类型时的使用
+- 如果key类型为其它的类型，则使用ArrayMap
 
 
+## java泛型
+泛型有个特点 类型擦除
+
+### 泛型的协变，逆变
+- <? extend T>
+限定了泛型的上限，即传入的类型是 T或者T的子类
+- <? super T>
+限定了泛型的下限，即传入的类型是 T或者 T的父类
+
+- 关系
+<? extends T> 继承自 T 继承自 <? super T>
+
+- 使用场景
+比如系统的源码 ArrayList<E>
+```java
+// 类定义
+public class ArrayList<E> extends AbstractList<E>
+        implements List<E>, RandomAccess, Cloneable, java.io.Serializable
+{
+...
+
+    // 使用了<? extends E> 修饰
+    public ArrayList(Collection<? extends E> c) {
+        ...
+    }
+
+
+    //
+    @Override
+    @SuppressWarnings("unchecked")
+    public void sort(Comparator<? super E> c) {
+        final int expectedModCount = modCount;
+        Arrays.sort((E[]) elementData, 0, size, c);
+        if (modCount != expectedModCount) {
+            throw new ConcurrentModificationException();
+        }
+        modCount++;
+    }
+
+}
+```
 
 
 
@@ -108,6 +260,59 @@ Object result = studentShowMethod.invoke(student,"message");
 System.out.println("result: " + result);
 
 ```
+
+## 类加载机制
+[参考](https://juejin.cn/post/6844903505937858568)
+类加载机制首先得从类的生命周期说起
+### 类的生命周期
+类从被加载到虚拟机内存中开始，到卸载出内存为止，它的整个生命周期包括：加载（Loading）、验证（Verification）、准备（Preparation）、解析（Resolution）、初始化（Initialization）、使用（Using）和卸载（Unloading）7个阶段。其中验证、准备、解析3个部分统称为连接（Linking）
+#### 加载
+从java字节码的二进制流中加载数据，最终存到方法区中(当然在此之前还需要对加载的数据进行验证)
+#### 验证
+这一步的工作就是验证加载的数据是否合理
+- 格式验证
+  符合java虚拟机规范中规定的class文件格式，class文件的完整性;
+- 元数据验证
+    - 针对数据类型的验证,检查这个类是否有父类（除了Object之外都应有父类）
+    - 本类的父类是否继承了不允许被继承的类（被final修饰 如果本类不是抽象类，
+    - 是否实现了父类中的全部虚方法或接口
+- 字节码验证
+  - 保证任意时刻操作数栈的数据类型与指令代码序列都能配合工作。（如：不能出现这样的状况：操作栈中放了一个int类型的数据，使用却按照long或者引用类型加载）
+  - 保证跳转指令不会跳转到方法体以外的字节码指令上
+  - 类型转换是有效的（如多态）
+- 符号引用的验证
+    符号引用是一组字符串，用来描述引用的过程, 为后续解析阶段虚拟机可以将符号引用直接转为 直接引用
+#### 准备
+经过验证阶段，虚拟机从文件，数据类型，方法逻辑，符号引用等各个方面对类进行了验证，已确保代码的正确性。接下来开始为代码的运行做准备，进入准备阶段
+  - 对类变量进行初始化(不是我们程序指定的初始化值)，各类型变量的默认初始化,比如 int默认为0， String默认为null
+#### 解析
+解析阶段是将常量池中符号引用转化成直接引用的过程。主要针对常量池中的类或接口，字段，类方法，接口方法，方法类型，方法句柄，调用限定符
+java虚拟机规范中规定了只有执行了以下字节码指令前才会将所用到的符号引用转化为直接引用：
+- anewarray 创建一个引用类型的数组
+- checkcast 检查对象是否是给定类型
+- getfield putfield 从对象获取某一个字段 设置对象的字段
+- getstatic putstatic 从类中获取某一静态变量 设置静态变量
+- instanceof 确定对象是否是给定类型
+- invokedynamic invokeinterface invokestatic invokevirtual 调用动态方法，接口方法，静态方法，虚方法
+- invokespecial 调用实例化方法，私有方法，父类中的方法
+- ldc idc_w 把常量池中的项压入栈
+- multianewarray 创建多为引用类型性数组
+- new 实例化对象
+#### 初始化
+阶段是为类设置类变量的值和一些其他初始化操作的阶段（如执行static{ }静态代码块）。
+#### 使用
+程序中正常使用类，比如new一个对象
+
+#### 卸载
+由java虚拟机去处理
+
+## 双亲委派机制
+双亲委派是类加载器加载class时的一种策略，就是判断该类 是否已经加载，如果没有则不是自身去查找而是委托给父加载器进行查找，这样 依次进行递归，直到委托到最顶层的 Bootstrap ClassLoader,如果 Bootstrap ClassLoader 找到了该 Class,就会直接返回，如果没找到，则继续依次向下查找， 如果还没找到则最后交给自身去查找
+### 双亲委托模式的好处
+1.避免重复加载，如果已经加载过一次 Class，则不需要再次加载，而是直接读取 已经加载的 Class
+2.更加安全，确保，java 核心 api 中定义类型不会被随意替换，比如，采用双亲 委托模式可以使得系统在 Java 虚拟机启动时就加载了 String 类，也就无法用自定 义的 String 类来替换系统的 String 类，这样便可以防止核心 API 库被随意篡改
+
+
 
 
 
