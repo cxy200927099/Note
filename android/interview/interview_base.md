@@ -60,10 +60,56 @@ threadlocal修饰的变量是线程独有的，这个looper在主线程中(prepa
 这样当在OnCreate中创建子线程去执行UI更新的时候， ViewRootImpl还没有被创建
 
 
-# AIDL VS Binder
-Binder是android 提供的ipc(Inter-Process Communication)通信框架，用于进程间通信
-AIDL是为了方便Binder的开发提出的框架
+## IdleHandler
+[相关代码分析](https://www.mdeditor.tw/pl/gmqI)
+IdleHandler 是 Handler 提供的一种在消息队列空闲时，执行任务的时机。但它执行的时机依赖消息队列的情况，那么如果 MessageQueue 一直有待执行的消息时，IdleHandler 就一直得不到执行，也就是它的执行时机是不可控的，不适合执行一些对时机要求比较高的任务。
+IdleHandler 被定义在 MessageQueue 中，它是一个接口
+```java
+// MessageQueue.java
+public static interface IdleHandler {
+  boolean queueIdle();
+}
+```
+返回值为 true 表示是一个持久的 IdleHandler 会重复使用，返回 false 表示是一个一次性的 IdleHandler
 
+- 什么时候出现空闲？
+1.MessageQueue 为空，没有消息；
+2.MessageQueue 中最近需要处理的消息，是一个延迟消息（when>currentTime），需要滞后执行；
+
+### 相关问题
+- Q：IdleHandler 有什么用？
+IdleHandler 是 Handler 提供的一种在消息队列空闲时，执行任务的时机；
+当 MessageQueue 当前没有立即需要处理的消息时，会执行 IdleHandler；
+
+- Q：MessageQueue 提供了 add/remove IdleHandler 的方法，是否需要成对使用？
+不是必须；
+IdleHandler.queueIdle() 的返回值，可以移除加入 MessageQueue 的 IdleHandler；
+
+- Q：当 mIdleHanders 一直不为空时，为什么不会进入死循环？
+只有在 pendingIdleHandlerCount 为 -1 时，才会尝试执行 mIdleHander；
+pendingIdlehanderCount 在 next() 中初始时为 -1，执行一遍后被置为 0，所以不会重复执行；
+
+- Q：是否可以将一些不重要的启动服务，搬移到 IdleHandler 中去处理？
+不建议；
+IdleHandler 的处理时机不可控，如果 MessageQueue 一直有待处理的消息，那么 IdleHander 的执行时机会很靠后；
+
+- Q：IdleHandler 的 queueIdle() 运行在那个线程？
+陷进问题，queueIdle() 运行的线程，只和当前 MessageQueue 的 Looper 所在的线程有关；
+子线程一样可以构造 Looper，并添加 IdleHandler；
+
+- Q:主线程的IdleHandler 如果进行耗时操作会怎样？
+1.Thread.sleep(n) n > 10 页面会卡死，但不会崩溃，如果页面有动图，则动图变为静态图（视频未尝试，猜测也会处于静止状态） 但此时如果点击页面按钮，则会无响应进入anr，如果不点击，n秒过后恢复正常。
+2.网络请求： 不会崩溃，但会报错 IdleHandler threw exception android.os.NetworkOnMainThreadException
+3.文件写入本地： 成功。测试所用文件为小文件，大文件猜测也一样，同sleep，中途不点击页面无事，点击anr。
+
+- Q:onCreate中Mainlooper添加idle后，先执行哪个？
+先执行oncreate其他代码，然后执行idleHandler
+
+
+# AIDL VS Binder
+在 Android 系统的 Binder 是由 Client,Service,ServiceManager,Binder 驱动程序组成的， 其中 Client，service，Service Manager 运行在用户空间，Binder 驱动程序是运行在内核空间 的。而 Binder 就是把这 4 种组件粘合在一块的粘合剂，其中核心的组件就是 Binder 驱动程 序，Service Manager 提供辅助管理的功能，而 Client 和 Service 正是在 Binder 驱动程序和 Service Manager 提供的基础设施上实现 C/S 之间的通信。其中 Binder 驱动程序提供设备文 件/dev/binder 与用户控件进行交互， Client、Service，Service Manager 通过 open 和 ioctl 文件操作相应的方法与 Binder 驱动程序 进行通信。而Client和Service之间的进程间通信是通过Binder驱动程序间接实现的。而Service Manager 是一个守护进程，用来管理 Service，并向 Client 提供查询 Service 接口的能力。
+
+AIDL是为了方便Binder的开发提出的框架
 Binder是C/S架构，多个client可以调用同一个server,调用远程服务时是同步的，
 
 ### 关于远程调用线程的问题
@@ -218,6 +264,28 @@ synchronized 关键字不能被继承。如果子类覆盖了父类的 被 synch
 synchronized经过编译之后，会在同步块的前后分别形成monitorenter和monitorexit这个两个字节码指令。在执行monitorenter指令时，首先要尝试获取对象锁。如果这个对象没被锁定，或者当前线程已经拥有了那个对象锁，把锁的计算器加1，相应的，在执行monitorexit指令时会将锁计算器就减1，当计算器为0时，锁就被释放了。如果获取对象锁失败，那当前线程就要阻塞，直到对象锁被另一个线程释放为止。
 主要是为了避免进入内核态线程阻塞
 
+##### [Synchronized的几种锁状态](https://blog.csdn.net/tongdanping/article/details/79647337?utm_medium=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-1.control&dist_request_id=&depth_1-utm_source=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-1.control)
+- 无锁状态
+
+- 偏向锁
+大多数时候是不存在锁竞争的，常常是一个线程多次获得同一个锁，因此如果每次都要竞争锁会增大很多没有必要付出的代价，为了降低获取锁的代价，才引入的偏向锁
+  当线程1访问代码块并获取锁对象时，会在java对象头和栈帧中记录偏向的锁的threadID，因为偏向锁不会主动释放锁，因此以后线程1再次获取锁的时候，需要比较当前线程的threadID和Java对象头中的threadID是否一致，如果一致（还是线程1获取锁对象），则无需使用CAS来加锁、解锁；如果不一致（其他线程，如线程2要竞争锁对象，而偏向锁不会主动释放因此还是存储的线程1的threadID），那么需要查看Java对象头中记录的线程1是否存活，如果没有存活，那么锁对象被重置为无锁状态，其它线程（线程2）可以竞争将其设置为偏向锁；如果存活，那么立刻查找该线程（线程1）的栈帧信息，如果还是需要继续持有这个锁对象，那么暂停当前线程1，撤销偏向锁，升级为轻量级锁，如果线程1 不再使用该锁对象，那么将锁对象状态设为无锁状态，重新偏向新的线程
+- 轻量锁
+采用cas来实现，轻量级锁考虑的是竞争锁对象的线程不多，而且线程持有锁的时间也不长的情景。因为阻塞线程需要CPU从用户态转到内核态，代价较大，如果刚刚阻塞不久这个锁就被释放了，那这个代价就有点得不偿失了，因此这个时候就干脆不阻塞这个线程，让它自旋这等待锁释放。
+- 重量锁
+会使得线程阻塞，CPU要从用户态转到内核态，
+自旋的时间太长也不行，因为自旋是要消耗CPU的，因此自旋的次数是有限制的，比如10次或者100次，如果自旋次数到了线程1还没有释放锁，或者线程1还在执行，线程2还在自旋等待，这时又有一个线程3过来竞争这个锁对象，那么这个时候轻量级锁就会膨胀为重量级锁。重量级锁把除了拥有锁的线程都阻塞，防止CPU空转
+
+*一句话就是锁可以升级不可以降级，但是偏向锁状态可以被重置为无锁状态。*
+
+###### 锁粗化
+按理来说，同步块的作用范围应该尽可能小，仅在共享数据的实际作用域中才进行同步，这样做的目的是为了使需要同步的操作数量尽可能缩小，缩短阻塞时间，如果存在锁竞争，那么等待锁的线程也能尽快拿到锁。 
+但是加锁解锁也需要消耗资源，如果存在一系列的连续加锁解锁操作，可能会导致不必要的性能损耗。 
+锁粗化就是将多个连续的加锁、解锁操作连接在一起，扩展成一个范围更大的锁，避免频繁的加锁解锁操作。
+
+###### 锁消除
+Java虚拟机在JIT编译时(可以简单理解为当某段代码即将第一次被执行时进行编译，又称即时编译)，通过对运行上下文的扫描，经过逃逸分析，去除不可能存在共享资源竞争的锁，通过这种方式消除没有必要的锁，可以节省毫无意义的请求锁时间
+
 
 #### Lock,ReentrantLock
 - Lock是一个接口，ReentrantLock是实现了这个接口
@@ -243,7 +311,7 @@ CAS相对于其他锁，不会进行内核态操作，有着一些性能的提�
 ## android类加载器
 - PathClassLoader: 主要用于系统和app的类加载器,其中optimizedDirectory为null, 采用默认目录/data/dalvik-cache/
 - DexClassLoader: 可以从包含classes.dex的jar或者apk中，加载类的类加载器, 可用于执行动态加载,但必须是app私有可写目录来缓存odex文件. 能够加载系统没有安装的apk或者jar文件， 因此很多插件化方案都是采用DexClassLoader;
-- BaseDexClassLoader: 比较基础的类加载器, PathClassLoader和DexClassLoader都只是在构造函数上对其简单封装而已.
+- BaseDexClassLoader: 比较基础的类加载器, PathClassLoader 和 DexClassLoader都只是在构造函数上对其简单封装而已.
 - BootClassLoader: 作为父类的类构造器。
 
 ## 热修复原理

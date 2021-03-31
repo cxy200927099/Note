@@ -30,6 +30,38 @@ while(it.hasNext()){
 }
 ```
 耗时上: 普通for循环< 迭代器 < foreach方式
+
+### CopyOnWriteArrayList
+由名字可以看出这个类是一个在写的时候做了将原数组复制一份出来，然后修改完成之后，在设置回去；
+通过源码分析得知，该类是一个线程安全的类，设计思想采用了读写分离的操作，可以并发读；在写的时候 采用了
+Synchonized(lock) 对象锁来保证并发写
+```java
+    public void add(int index, E element) {
+        synchronized (lock) {
+            Object[] elements = getArray();
+            int len = elements.length;
+            if (index > len || index < 0)
+                throw new IndexOutOfBoundsException(outOfBounds(index, len));
+            Object[] newElements;
+            int numMoved = len - index;
+            if (numMoved == 0)
+                newElements = Arrays.copyOf(elements, len + 1);
+            else {
+                newElements = new Object[len + 1];
+                System.arraycopy(elements, 0, newElements, 0, index);
+                System.arraycopy(elements, index, newElements, index + 1,
+                                 numMoved);
+            }
+            newElements[index] = element;
+            setArray(newElements);
+        }
+    }
+```
+CopyOnWriteArrayList使用写时拷贝的策略来保证list的一致性，而获取-拷贝-写入 三步并不是原子性的，所以在修改增删改的过程中都是用了独占锁，并保证了同时只有一个线程才能对list数组进行修改
+#### 缺点:
+- 内存占用问题，写时拷贝导致了2倍内存
+- 数据一致性问题: CopyOnWrite容器只能保证数据的最终一致性，不能保证数据的实时一致性。所以如果你希望写入的的数据，马上能读到，请不要使用CopyOnWrite容器。
+
 ### hashmap相关
 
 #### hashmap实现原理
@@ -64,8 +96,12 @@ index = (n-1)& hashcode
 hashSet底层实现set接口，仅存储对象，使用对象来计算hashcode值
 hashmap实现map接口，存储键值对，使用key来计算hashcode
 
-### ConcurrentHashmap
-ConcurrentHashMap 是用 Node 数组+链表+红黑树数据结构来实现的， 并发制定用 synchronized 和 CAS 操作
+### [ConcurrentHashmap](https://www.cnblogs.com/hello-shf/p/12183263.html)
+JDK8中ConcurrentHashMap的内部结构与hashmap是一样的，采用 Node 数组+链表+红黑树数据结构来实现的;
+- put方法:
+使用两个懒加载的方式去初始化 table，采用自旋的方式，判断当前数据是否发生hash冲突，没有冲突就采用 cas(保证一定能设置成功) 的方式 来设置对应的数据, 发生冲突了，用 synchronized 只对具体的某一个 桶(链表头或者树节点头) 进行加锁，减少了锁的粒度，从而增加了并发
+
+
 
 ### linkedHashmap
 LinkedHashMap继承于HashMap，只是hashMap是无序的，LinkedHashMap内部用一个双向链表来维护entry，其定义了
@@ -104,9 +140,15 @@ android的LruCache实现就是基于LinkedHashMap，LruCache是线程安全的�
 ##### SparseArray
 内部用两个数组来存储key，value，存储空间比hashMap少,使用基本类型，避免自动装箱
 在get和put的时候内部都用了二分查找算法，其存储的元素都是按照从小到大排列好的
-[关于什么时候该用SparseArray替代HashMap](https://greenspector.com/en/android-should-you-use-hashmap-or-sparsearray/)
-- 结论:
-如果使用HashMap存储的key是Integer或者Long，则建议用SparseArray来代替，网上还有说存储的item小于1000的时候用SparseArray的性能会好于HashMap
+- 扩容:
+在插入数据的时候进行扩容,大小变为原来的2倍
+- 删除
+删除的时候只是做了标记，把对应的删除项置为(DELETED= new Object()),这样可以做到删除的时候不对数据进行移动，节约拷贝数据时间，而且在有数据插入到同样位置的时候，可以直接复用，也节省了拷贝数据的时间
+
+- [关于什么时候该用SparseArray替代HashMap](https://greenspector.com/en/android-should-you-use-hashmap-or-sparsearray/)
+结论:如果使用HashMap存储的key是Integer或者Long，则建议用SparseArray来代替，网上还有说存储的item小于1000的时候用SparseArray的性能会好于HashMap
+
+
 
 ### ArrayMap
 ArrayMap是一个<key,value>映射的数据结构，它设计上更多的是考虑内存的优化，内部是使用两个数组进行数据存储，一个数组记录key的hash值，另外一个数组记录Value值，它和SparseArray一样，也会对key使用二分法进行从小到大排序，在添加、删除、查找数据的时候都是先使用二分查找法得到相应的index，然后通过index来进行添加、查找、删除等操作，所以，应用场景和SparseArray的一样，如果在数据量比较大的情况下，那么它的性能将退化至少50%
