@@ -1,3 +1,6 @@
+---
+style: ocean
+---
 [TOC]
 
 # JVM

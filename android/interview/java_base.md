@@ -2,6 +2,63 @@
 
 # java base
 
+## java四大引用类型
+- 强引用 StrongReference
+    平常 new创建的对象关联的引用，系统oom也不会回收这个引用
+- 软引用 SoftReference
+    只有在内存不足的时候JVM才会回收该对象。因此，这一点可以很好地用来解决OOM的问题，并且这个特性很适合用来实现缓存：比如网页缓存、图片缓存等。
+- 弱引用 WeakReference
+    内存不足，每次GC都会回收弱引用关联的对象，用于解决内存泄漏，比如
+- 虚引用 PhantomReference
+    如果一个对象与虚引用关联，则跟没有引用与之关联一样，在任何时候都可能被垃圾回收器回收，虚引用必须和引用队列关联使用
+- 引用队列 ReferenceQueue
+    使用SoftReference，WeakReference，PhantomReference 的时候，可以关联一个ReferenceQueue。那么当垃圾回收器准备回收一个被引用包装的对象时，该引用会被加入到关联的ReferenceQueue。程序可以通过判断引用队列中是否已经加入引用,来了解被引用的对象是否被GC回收
+
+## equals 与 == 的区别
+- 首先的区别是，equals 是方法，而 == 是操作符；
+- 对于基本类型的变量来说（如 short、 int、 long、 float、 double），只能使用 == ，因为这些基本类型的变量没有 equals 方法。对于基本类型变量的比较，使用 == 比较， 一般比较的是它们的值
+- 对于引用类型，如果需要区分是否 重写了 equals() 函数，
+    - 没有重写  此时equals是 object的方法，其内部是 `return (this == obj);` 比较两个引用指向的地址是否相同
+    - 重写了  例如 String 类，在判断指向的地址不相同时，判断 值 是否相同
+```java
+public static class Person {
+        String name;
+
+        public Person(String name) {
+            this.name = name;
+        }
+
+        public Object clone()  {
+            try {
+                return super.clone();
+            } catch (CloneNotSupportedException e) {
+                e.printStackTrace();
+                return new Person(this.name);
+            }
+        }
+    }
+
+    private static void testEquals() {
+        Person a = new Person("cxy");
+        Person b = new Person("cxy");
+        Person c = a;
+        Person d = (Person) a.clone();
+        System.out.println("a.equals(b):"+a.equals(b)); // false
+        System.out.println("a.equals(c):"+a.equals(c)); // true
+        System.out.println("b.equals(c):"+b.equals(c)); // false
+        System.out.println("a.equals(d):"+a.equals(d)); // false
+        System.out.println("b.equals(d):"+b.equals(d)); // false
+        System.out.println("c.equals(d):"+c.equals(d)); // false
+        System.out.println("a==b:"+(a==b)); // false
+        System.out.println("a==c:"+(a==c)); // true
+        System.out.println("b==c:"+(b==c)); // false
+        System.out.println("a==d:"+(a==d)); // false
+        System.out.println("b==d:"+(b==d)); // false
+        System.out.println("c==d:"+(c==d)); // false
+    }
+```
+
+
 ## java常用容器
 ### ArrayList,LinkedList,Vector
 1.ArrayList是实现了基于动态数组的数据结构，LinkedList基于链表的数据结构。

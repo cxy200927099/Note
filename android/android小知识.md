@@ -55,3 +55,6 @@ rxjava: 比较了解就好，不推荐深入
 
 
 
+## android-studio增加模板
+[参见这里](https://juejin.cn/post/6844903782338265095)
+

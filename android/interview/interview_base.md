@@ -61,7 +61,7 @@ threadlocal修饰的变量是线程独有的，这个looper在主线程中(prepa
 
 
 ## IdleHandler
-[相关代码分析](https://www.mdeditor.tw/pl/gmqI)
+[相关代码分析](https://juejin.cn/post/6844904068129751047)
 IdleHandler 是 Handler 提供的一种在消息队列空闲时，执行任务的时机。但它执行的时机依赖消息队列的情况，那么如果 MessageQueue 一直有待执行的消息时，IdleHandler 就一直得不到执行，也就是它的执行时机是不可控的，不适合执行一些对时机要求比较高的任务。
 IdleHandler 被定义在 MessageQueue 中，它是一个接口
 ```java
@@ -71,6 +71,23 @@ public static interface IdleHandler {
 }
 ```
 返回值为 true 表示是一个持久的 IdleHandler 会重复使用，返回 false 表示是一个一次性的 IdleHandler
+
+- 使用
+```java
+    // 添加 IdleHandler
+    Looper.myQueue().addIdleHandler(new MessageQueue.IdleHandler() {
+        @Override
+        public boolean queueIdle() {
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            Log.e("Test","IdleHandler queueIdle");
+            return false;
+        }
+    });
+```
 
 - 什么时候出现空闲？
 1.MessageQueue 为空，没有消息；
@@ -107,6 +124,7 @@ IdleHandler 的处理时机不可控，如果 MessageQueue 一直有待处理的
 
 
 # AIDL VS Binder
+## [Binder](https://juejin.cn/post/6844904115777044488)
 在 Android 系统的 Binder 是由 Client,Service,ServiceManager,Binder 驱动程序组成的， 其中 Client，service，Service Manager 运行在用户空间，Binder 驱动程序是运行在内核空间 的。而 Binder 就是把这 4 种组件粘合在一块的粘合剂，其中核心的组件就是 Binder 驱动程 序，Service Manager 提供辅助管理的功能，而 Client 和 Service 正是在 Binder 驱动程序和 Service Manager 提供的基础设施上实现 C/S 之间的通信。其中 Binder 驱动程序提供设备文 件/dev/binder 与用户控件进行交互， Client、Service，Service Manager 通过 open 和 ioctl 文件操作相应的方法与 Binder 驱动程序 进行通信。而Client和Service之间的进程间通信是通过Binder驱动程序间接实现的。而Service Manager 是一个守护进程，用来管理 Service，并向 Client 提供查询 Service 接口的能力。
 
 AIDL是为了方便Binder的开发提出的框架
