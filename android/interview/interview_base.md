@@ -338,65 +338,6 @@ CAS相对于其他锁，不会进行内核态操作，有着一些性能的提�
 这里某种方式就涉及到android的类加载机制，android中对class进行了优化，将多个class合并成一个dex文件，android的在加载dex的类加载器中有个DexPathList,在DexPathList.findClass()过程，一个Classloader可以包含多个dex文件，每个dex文件被封装到一个Element对象，这些Element对象排列成有序的数组dexElements。当查找某个类时，会遍历所有的dex文件，如果找到则直接返回，不再继续遍历dexElements。也就是说当两个相同的dex中出现，会优先处理排在前面的dex文件，这便是热修复的核心精髓，将需要修复的类所打包的dex文件插入到dexElements前面
 
 
-## 导致内存泄漏的原因
-根本原因: 长生命周期的对象持有短生命周期的对象，导致短生命周期对象无法及时释放
-
-### cursor游标为关闭
-记得及时关闭游标
-### 内部类引起的泄漏
-比如在Activity中定义的内部类，并启动了一个长时间运行的线程，因为非静态内部类和匿名内部类会持有外部类的引用，这样Activity退出的时候，得不到及时的回收
-如Activity中定义了非静态内部类handler，handler的消息队列中还有未处理的消息，或者正在处理消息，activity退出了，也会导致Activity内存泄漏
-- 解决
-  使用静态内部类+WeakRefernce,即 static修饰内部类，然后内部类构造函数传入acitvity,使用WeakReference来存储Activity
-  更新UI的时候，需要对Activity判空处理，有可能Activity已经被回收了
-### 静态集合类引起的内存泄漏
-### 注册/反注册未成对使用
-### Bitmap对象不再使用时，没有调用recycle()释放
-### animation对象没有及时调用cancel()取消动画
-
-
-## android优化
-### 布局优化
-减少过渡绘制，减少布局嵌套，能用linearLayout和FrameLayout，就不用 RelativeLayout ，RelativeLayout测绘比较耗时
-使用include配合merge标签，include可以重用布局，merge减少自己的一层布局
-viewStub按需加载，使用到了才去加载布局
-复杂的界面使用ConstraintLayout代替RelativeLayout
-### 绘制优化
-onDraw中不要创建新的局部对象
-onDraw中不要做耗时的任务
-android屏幕刷新率60HZ，每一帧绘制的时间大约16ms，如果onDraw函数过于繁重，会导致丢帧，卡顿
-### 内存优化
-避免内存泄漏，内存泄漏最终会触发GC，GC的时候stop-the-world会造成界面卡顿
-1. 集合类中对象的释放，比如arrayList，不用的时候及时调用clear(),并将集合对象赋值为null
-2. 单例中持有Context(Activity),如果单例中需要用到Context，使用ApplicationContext，因为单例生命周期是和进程一样的
-3. 匿名内部类和非静态内部类，这两个类会默认持有外部类的引用，导致外部类(常见的Activity)得不到回收
-解决使用静态内部类，及弱引用的方式
-4. 资源关闭问题
-即使关闭一些对象比如文件流，网络流，广播，一些第三方库的解除注册
-
-使用leakcanary帮助debug时检测内存泄漏
-
-### 启动速度优化
-1. 利用提前展示出来的Window，快速展示出来一个界面，给用户快速反馈的体验
-2. 在Application中OnCreate中尽量不要做太多初始化工作，可以将一些非必要的组件做成异步的方式加载
-3. 数据库及IO操作都移到工作线程，并且设置线程优先级为THREAD_PRIORITY_BACKGROUND，这样工作线程最多能获取到10%的时间片，优先保证主线程执行
-4. 冷启动，热启动，温启动
-  - 冷启动
-  应用程序进程从头开始启动，系统中不存在该进程，这时候一些资源初始化，数据的加载是从头开始的，这时就是上述1，2，3中的优化点
-  - 热启动
-  启动app时，后台已有app的进程（例：按back键、home键，应用虽然会退出，但是该应用的进程是依然会保留在后台，可进入任务列表查看），所以在已有进程的情况下，这种启动会从已有的进程中来启动应用，这个方式叫热启动，这时候我们可以在onSaveInstanceState的时候保存一些数据，然后Activity再次创建时，从onCreate中bundle获取
-  - 温启动
-  介于冷启动和热启动之间, 一般来说在以下两种情况下发生
-  用户back退出了App, 然后又启动. App进程可能还在运行, 但是activity需要重建。用户退出App后, 系统可能由于内存原因将App杀死, 进程和activity都需要重启, 但是可以在onCreate中将被动杀死锁保存的状态(saved instance state)恢复
-### apk大小优化
-删除无用的资源，
-图片适配以一套为标准比如xxhdp,
-png,jpg压缩，
-代码压缩，混淆，优化
-插件化
-###  其他优化
-线程优化:使用线程池，优化响应速度，减少频繁创建线程和销毁线程带来的开销，
-bitmap的优化，压缩质量，尺寸
 
 ### bitmap相关
 - 从网络加载一个10M的图片；
@@ -423,7 +364,89 @@ BitmapRegionDecoder只解码图片的部分区域
 5. 跳转到系统白名单界面让用户自己添加app进入白名单
 
 
+## Activity
+### Activity的启动模式
+- standard
+这是默认模式，每次激活Activity时都会创建Activity实例，并放入任务栈中。
 
+- singleTop
+如果在任务的栈顶正好存在该Activity的实例，就重用该实例( 会调用实例的 onNewIntent() )，否则就会创建新的实例并放入栈顶，即使栈中已经存在该Activity的实例，只要不在栈顶，都会创建新的实例。
+如a-b-c-a-a,若a为singleTop，则栈中存在为a-b-c-a
+
+- singleTask
+如果在栈中已经有该Activity的实例，就重用该实例(会调用实例的 onNewIntent() )。重用时，会让该实例回到栈顶，因此在它上面的实例将会被移出栈。如果栈中不存在该实例，将会创建新的实例放入栈中。
+如a-b-c-a,若a为singleTask，则栈中存在为只剩 a
+
+- singleInstance
+在一个新栈中创建该Activity的实例，并让多个应用共享该栈中的该Activity实例。一旦该模式的Activity实例已经存在于某个栈中，任何应用再激活该Activity时都会重用该栈中的实例( 会调用实例的 onNewIntent() )。其效果相当于多个应用共享一个应用，不管谁激活该 Activity 都会进入同一个应用中。
+
+### Launcher采用的启动模式
+看了下源码，采用的singleTask，主要是
+
+
+### 生命周期
+
+### 两个 Activity 之间跳转时必然会执行的是哪几个方法？
+一般情况下比如说有两个activity,分别叫A,B,当在A里面激活B组件的时候, A会调用 onPause() 方法,然后 B 调用 onCreate() ,onStart(), onResume()。
+这个时候 B 覆盖了窗体, A 会调用 onStop()方法. 如果 B 是个透明的,或者是对话框的样式, 就 不会调用 A 的 onStop()方法。
+如果Activity启动模式设置为非standard模式，且栈中存在Activity，则不会重新创建Activity，即onCreate，不会被调用
+
+
+## Fragment
+
+
+### Fragment的生命周期
+
+#### 关于Fragment重叠的问题
+出现这种问题的原因是：当我们旋转屏幕的时候，activity会被销毁并重新创建，并且在销毁之前执行了onSaveInstanceState(Bundle outState)这个方法。这个方法会保存activity的一些信息，其中就包括添加过的fragment，当activity被重新创建时，会初始化其中的变量，这个时候点击底部导航的话会重新去添加fragment，也就导致了重叠的问题
+
+还有一种可能也会造成fragment重叠的问题，就是当内存不足时activity被系统回收时，再次进入也会造成重叠的问题，原因也是因为onSaveInstanceState(outState);方法保存了activity的一些数据。
+
+- 解决方案：
+  - onSaveInstanceState 中不调用 super.onSaveInstanceState 这样界面就不会被保存下来，也就不会发生重影
+  ```java
+  public void onSaveInstanceState(Bundle outState) {
+    // TODO Auto-generated method stub
+    //super.onSaveInstanceState(outState);   //将这一行注释掉，阻止activity保存fragment的状态
+  }
+  ```
+  - onSaveInstanceState 在 onCreate的时候，判断savedInstanceState是否为null，通过tag找到 fragment, 赋值给 初始化的变量,否则创建新的fragment，并添加
+  ```java
+  @Override
+  public void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    if (savedInstanceState==null) {
+        mainFragment = MainFragment.newInstance();
+        ft.add(R.id.fl_content, mainFragment, "MainFragment");
+    }else {
+        mainFragment = (MainFragment) getSupportFragmentManager().findFragmentByTag("MainFragment");
+    }
+  }
+  ```
+  - 在添加fragment的时候，先通过 tag 找一下是不是已经存在fragment了，不存在则添加 并加上tag信息
+  ```java
+  Fragment tempFragment = getSupportFragmentManager().findFragmentByTag("MainFragment");
+  if (tempFragment==null) {
+      mainFragment = MainFragment.newInstance();
+      ft.add(R.id.fl_content, mainFragment, "MainFragment");
+  }else {
+      mainFragment = (MainFragment) tempFragment;
+  }
+  ```
+
+
+### view的事件分发机制
+- 分发 DispatchTouchEvent
+首先会调用Activity的 DispatchTouchEvent()
+Activity-> PhoneWindow->DocorView->ViewGroup->ContentView-View
+- 拦截 onInterceptTouchEvent
+这个方法是在ViewGroup中的，表示是否需要拦截事件，
+- onTouchEvent
+表示是否消费事件
+
+- 总结
+dispatchTouchEvent 代表分发事件，onInterceptTouchEvent()代表拦截事件，onTouchEvent()代表消耗事件，由自己处理。
+默认状态下事件是按照从Activity到ViewGroup再到View的顺序进行分发的，分发下去处不处理是另一回事，分发完成后，不处理则向上一层回调，调用上一层的onTouchEvent进行处理事件，若onTouchEvent返回true，则表示在该层消耗了事件，若返回false，表示事件还没被处理，需要再向上回调一层，调用上一层的onTouchEvent方法
 
 #### ontouch和onTouchEvent的区别
 - ontouch是 view的 OnTouchListener接口的方法
@@ -431,14 +454,6 @@ BitmapRegionDecoder只解码图片的部分区域
 在view的 dispatchTouchEvent函数中，如果view设置了onTouchListener接口，且onTouch返回true表示消费该事件
 则 event事件不会分发给 onTouchEvent
 
-
-binder原理，binder底层原理不是很了解，主要用AIDL比较多
-
-Activity的启动模式
-分别介绍一下，
-singleTop,singleTask,singleInstance的应用场景，答得不是很好
-
-GC机制
 
 HashMap原理
 介绍了下table，链表，tree

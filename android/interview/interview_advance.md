@@ -183,4 +183,73 @@ public class TestInterceptor implements IInterceptor {
 
 
 
+## 导致内存泄漏的原因
+根本原因: 长生命周期的对象持有短生命周期的对象，导致短生命周期对象无法及时释放
+
+### cursor游标为关闭
+记得及时关闭游标
+### 内部类引起的泄漏
+比如在Activity中定义的内部类，并启动了一个长时间运行的线程，因为非静态内部类和匿名内部类会持有外部类的引用，这样Activity退出的时候，得不到及时的回收
+如Activity中定义了非静态内部类handler，handler的消息队列中还有未处理的消息，或者正在处理消息，activity退出了，也会导致Activity内存泄漏
+- 解决
+  使用静态内部类+WeakRefernce,即 static修饰内部类，然后内部类构造函数传入acitvity,使用WeakReference来存储Activity
+  更新UI的时候，需要对Activity判空处理，有可能Activity已经被回收了
+### 静态集合类引起的内存泄漏
+### 注册/反注册未成对使用
+### Bitmap对象不再使用时，没有调用recycle()释放
+### animation对象没有及时调用cancel()取消动画
+
+
+## android优化
+### 布局优化
+减少过渡绘制，减少布局嵌套，能用linearLayout和FrameLayout，就不用 RelativeLayout ，RelativeLayout测绘比较耗时
+使用include配合merge标签，include可以重用布局，merge减少自己的一层布局
+viewStub按需加载，使用到了才去加载布局
+复杂的界面使用ConstraintLayout代替RelativeLayout
+### 绘制优化
+onDraw中不要创建新的局部对象
+onDraw中不要做耗时的任务
+android屏幕刷新率60HZ，每一帧绘制的时间大约16ms，如果onDraw函数过于繁重，会导致丢帧，卡顿
+### 内存优化
+避免内存泄漏，内存泄漏最终会触发GC，GC的时候stop-the-world会造成界面卡顿
+1. 集合类中对象的释放，比如arrayList，不用的时候及时调用clear(),并将集合对象赋值为null
+2. 单例中持有Context(Activity),如果单例中需要用到Context，使用ApplicationContext，因为单例生命周期是和进程一样的
+3. 匿名内部类和非静态内部类，这两个类会默认持有外部类的引用，导致外部类(常见的Activity)得不到回收
+解决使用静态内部类，及弱引用的方式
+4. 资源关闭问题
+即使关闭一些对象比如文件流，网络流，广播，一些第三方库的解除注册
+
+使用leakcanary帮助debug时检测内存泄漏
+
+### 启动速度优化
+1. 利用提前展示出来的Window，快速展示出来一个界面，给用户快速反馈的体验
+2. 在Application中OnCreate中尽量不要做太多初始化工作，可以将一些非必要的组件做成异步的方式加载
+3. 数据库及IO操作都移到工作线程，并且设置线程优先级为THREAD_PRIORITY_BACKGROUND，这样工作线程最多能获取到10%的时间片，优先保证主线程执行
+4. 冷启动，热启动，温启动
+  - 冷启动
+  应用程序进程从头开始启动，系统中不存在该进程，这时候一些资源初始化，数据的加载是从头开始的，这时就是上述1，2，3中的优化点
+  - 热启动
+  启动app时，后台已有app的进程（例：按back键、home键，应用虽然会退出，但是该应用的进程是依然会保留在后台，可进入任务列表查看），所以在已有进程的情况下，这种启动会从已有的进程中来启动应用，这个方式叫热启动，这时候我们可以在onSaveInstanceState的时候保存一些数据，然后Activity再次创建时，从onCreate中bundle获取
+  - 温启动
+  介于冷启动和热启动之间, 一般来说在以下两种情况下发生
+  用户back退出了App, 然后又启动. App进程可能还在运行, 但是activity需要重建。用户退出App后, 系统可能由于内存原因将App杀死, 进程和activity都需要重启, 但是可以在onCreate中将被动杀死锁保存的状态(saved instance state)恢复
+### apk大小优化
+删除无用的资源，
+图片适配以一套为标准比如xxhdp,
+png,jpg压缩，
+代码压缩，混淆，优化
+插件化
+###  其他优化
+线程优化:使用线程池，优化响应速度，减少频繁创建线程和销毁线程带来的开销，
+bitmap的优化，压缩质量，尺寸
+
+
+### 如何检测掉帧
+
+### 卡顿检测
+
+
+### anr
+
+
 

@@ -1,6 +1,7 @@
 [TOC]
 
 # 设计模式
+[参考这里](https://mp.weixin.qq.com/s/lN4nIeYoSg06fMaAoi6W-A)
 
 ## 单例模式
 进程中只存在一个实例
